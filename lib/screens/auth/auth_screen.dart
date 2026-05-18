@@ -52,6 +52,11 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
+    if (!_isSignIn && password != _confirmPassController.text) {
+      _showMessage('Passwords do not match.');
+      return;
+    }
+
     final ok = _isSignIn
         ? await auth.login(email: email, password: password)
         : await auth.signup(

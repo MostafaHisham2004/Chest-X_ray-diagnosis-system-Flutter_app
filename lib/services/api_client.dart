@@ -56,9 +56,16 @@ class ApiClient {
   Map<String, dynamic> _parse(http.Response response) {
     Map<String, dynamic> body = {};
     if (response.body.isNotEmpty) {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) {
-        body = decoded;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          body = decoded;
+        }
+      } on FormatException {
+        throw ApiException(
+          'Server returned an invalid response.',
+          statusCode: response.statusCode,
+        );
       }
     }
 
@@ -67,7 +74,10 @@ class ApiClient {
       return body;
     }
 
-    final message = body['message'] as String? ?? 'Request failed';
+    final error = body['error'];
+    final message = body['message'] as String? ??
+        (error is Map<String, dynamic> ? error['message'] as String? : null) ??
+        'Request failed';
     throw ApiException(message, statusCode: response.statusCode);
   }
 }

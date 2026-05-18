@@ -61,6 +61,9 @@ class AuthService {
     final token = data['token'] as String? ?? '';
     final role = data['role'] as String? ?? 'patient';
     final userJson = data['user'] as Map<String, dynamic>? ?? {};
+    if (token.isEmpty || userJson.isEmpty) {
+      throw const ApiException('Authentication response was incomplete.');
+    }
     final user = AppUser.fromJson({...userJson, 'role': role});
     return AuthSession(token: token, role: role, user: user);
   }
