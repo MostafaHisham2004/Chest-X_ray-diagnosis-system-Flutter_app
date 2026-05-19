@@ -5,15 +5,26 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ai_xray_diagnosis_app/main.dart';
+import 'package:mediscan_ai/main.dart';
+import 'package:mediscan_ai/providers/auth_provider.dart';
+import 'package:mediscan_ai/theme/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  testWidgets('AI X-ray app renders core UI', (WidgetTester tester) async {
-    await tester.pumpWidget(const AiXrayApp());
+  testWidgets('MediScan app renders authentication UI',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ],
+        child: const MediScanApp(),
+      ),
+    );
 
-    expect(find.text('AI X-ray Diagnosis'), findsOneWidget);
-    expect(find.text('Upload X-ray'), findsOneWidget);
+    expect(find.text('MediScan AI'), findsOneWidget);
+    expect(find.text('Sign In'), findsWidgets);
   });
 }

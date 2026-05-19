@@ -45,6 +45,30 @@ class ApiClient {
     return _parse(response);
   }
 
+  Future<Map<String, dynamic>> patch(
+    String path, {
+    Map<String, dynamic>? body,
+    String? token,
+  }) async {
+    final response = await _client.patch(
+      _uri(path),
+      headers: _headers(token),
+      body: body == null ? null : jsonEncode(body),
+    );
+    return _parse(response);
+  }
+
+  Future<Map<String, dynamic>> delete(
+    String path, {
+    String? token,
+  }) async {
+    final response = await _client.delete(
+      _uri(path),
+      headers: _headers(token),
+    );
+    return _parse(response);
+  }
+
   Map<String, String> _headers(String? token) {
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) {

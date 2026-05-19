@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/shared_widgets.dart';
@@ -31,10 +30,13 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('X-ray submitted for review! You\'ll receive results in 24-48 hours.', style: GoogleFonts.dmSans()),
+          content: Text(
+              'X-ray submitted for review! You\'ll receive results in 24-48 hours.',
+              style: GoogleFonts.dmSans()),
           backgroundColor: AppTheme.primary,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     });
@@ -51,9 +53,16 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Upload X-ray', style: GoogleFonts.dmSans(fontSize: 26, fontWeight: FontWeight.w800)),
+            Text('Upload X-ray',
+                style: GoogleFonts.dmSans(
+                    fontSize: 26, fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
-            Text('Share your X-ray images with your doctor', style: GoogleFonts.dmSans(fontSize: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+            Text('Share your X-ray images with your doctor',
+                style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.textSecondary)),
             const SizedBox(height: 20),
             // Upload card
             SectionCard(
@@ -62,7 +71,8 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               child: Column(
                 children: [
                   if (!_fileSelected)
-                    UploadDropzone(onTap: () => setState(() => _fileSelected = true))
+                    UploadDropzone(
+                        onTap: () => setState(() => _fileSelected = true))
                   else
                     Column(
                       children: [
@@ -75,14 +85,20 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                           child: const Stack(
                             alignment: Alignment.center,
                             children: [
-                              Icon(Icons.image, size: 48, color: Colors.white30),
-                              Positioned(top: 12, right: 12,
-                                  child: DiagnosisBadge(label: 'xray_chest.jpg', type: BadgeType.success)),
+                              Icon(Icons.image,
+                                  size: 48, color: Colors.white30),
+                              Positioned(
+                                  top: 12,
+                                  right: 12,
+                                  child: DiagnosisBadge(
+                                      label: 'xray_chest.jpg',
+                                      type: BadgeType.success)),
                             ],
                           ),
                         ),
                         TextButton.icon(
-                          onPressed: () => setState(() => _fileSelected = false),
+                          onPressed: () =>
+                              setState(() => _fileSelected = false),
                           icon: const Icon(Icons.close, size: 14),
                           label: const Text('Remove file'),
                         ),
@@ -99,22 +115,28 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Symptoms (Optional)', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500)),
+                  Text('Symptoms (Optional)',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 13, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _symptomsCtrl,
                     style: GoogleFonts.dmSans(fontSize: 14),
-                    decoration: const InputDecoration(hintText: 'e.g., Chest pain, difficulty breathing'),
+                    decoration: const InputDecoration(
+                        hintText: 'e.g., Chest pain, difficulty breathing'),
                   ),
                   const SizedBox(height: 16),
-                  Text('Additional Notes (Optional)', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500)),
+                  Text('Additional Notes (Optional)',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 13, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _notesCtrl,
                     maxLines: 3,
                     style: GoogleFonts.dmSans(fontSize: 14),
                     decoration: const InputDecoration(
-                      hintText: 'Any other information that might be helpful for your doctor...',
+                      hintText:
+                          'Any other information that might be helpful for your doctor...',
                       contentPadding: EdgeInsets.all(14),
                     ),
                   ),
@@ -125,10 +147,16 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _fileSelected ? _submit : null,
                       icon: _isSubmitting
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.send_outlined, size: 18),
-                      label: Text(_isSubmitting ? 'Submitting...' : 'Submit for Review',
-                          style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600)),
+                      label: Text(
+                          _isSubmitting ? 'Submitting...' : 'Submit for Review',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -140,11 +168,23 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               title: 'What happens next?',
               child: Column(
                 children: [
-                  _StepItem(number: '1', title: 'AI Analysis', description: 'Your X-ray will be analyzed by our AI system to detect any potential issues.'),
+                  _StepItem(
+                      number: '1',
+                      title: 'AI Analysis',
+                      description:
+                          'Your X-ray will be analyzed by our AI system to detect any potential issues.'),
                   const Divider(height: 20),
-                  _StepItem(number: '2', title: 'Doctor Review', description: 'A qualified doctor will review the AI results and provide their assessment.'),
+                  _StepItem(
+                      number: '2',
+                      title: 'Doctor Review',
+                      description:
+                          'A qualified doctor will review the AI results and provide their assessment.'),
                   const Divider(height: 20),
-                  _StepItem(number: '3', title: 'Get Results', description: "You'll receive a detailed report with diagnosis and recommendations."),
+                  _StepItem(
+                      number: '3',
+                      title: 'Get Results',
+                      description:
+                          "You'll receive a detailed report with diagnosis and recommendations."),
                 ],
               ),
             ),
@@ -158,9 +198,15 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.access_time_outlined, size: 16, color: AppTheme.primary),
+                  const Icon(Icons.access_time_outlined,
+                      size: 16, color: AppTheme.primary),
                   const SizedBox(width: 8),
-                  Text('Typical review time: 24-48 hours', style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                  Text('Typical review time: 24-48 hours',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.textSecondary)),
                 ],
               ),
             ),
@@ -170,11 +216,14 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               title: 'Important Guidelines',
               child: Column(
                 children: [
-                  _GuidelineRow('Ensure the X-ray image is clear and properly oriented.'),
+                  _GuidelineRow(
+                      'Ensure the X-ray image is clear and properly oriented.'),
                   const SizedBox(height: 8),
-                  _GuidelineRow('Include all relevant symptoms and medical history.'),
+                  _GuidelineRow(
+                      'Include all relevant symptoms and medical history.'),
                   const SizedBox(height: 8),
-                  _GuidelineRow('This is not a substitute for emergency medical care.'),
+                  _GuidelineRow(
+                      'This is not a substitute for emergency medical care.'),
                 ],
               ),
             ),
@@ -191,7 +240,8 @@ class _StepItem extends StatelessWidget {
   final String title;
   final String description;
 
-  const _StepItem({required this.number, required this.title, required this.description});
+  const _StepItem(
+      {required this.number, required this.title, required this.description});
 
   @override
   Widget build(BuildContext context) {
@@ -200,19 +250,33 @@ class _StepItem extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 28, height: 28,
-          decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+          width: 28,
+          height: 28,
+          decoration: const BoxDecoration(
+              color: AppTheme.primary, shape: BoxShape.circle),
           alignment: Alignment.center,
-          child: Text(number, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          child: Text(number,
+              style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white)),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700)),
+              Text(title,
+                  style: GoogleFonts.dmSans(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
               const SizedBox(height: 3),
-              Text(description, style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary, height: 1.4)),
+              Text(description,
+                  style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.textSecondary,
+                      height: 1.4)),
             ],
           ),
         ),
@@ -231,9 +295,17 @@ class _GuidelineRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.check_circle_outline, size: 16, color: AppTheme.success),
+        const Icon(Icons.check_circle_outline,
+            size: 16, color: AppTheme.success),
         const SizedBox(width: 8),
-        Expanded(child: Text(text, style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary, height: 1.4))),
+        Expanded(
+            child: Text(text,
+                style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.textSecondary,
+                    height: 1.4))),
       ],
     );
   }

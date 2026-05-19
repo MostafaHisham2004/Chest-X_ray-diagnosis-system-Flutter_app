@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
+import '../../shared/care_chat_screen.dart';
 import '../patient/patient_dashboard.dart';
 import 'patient_xrays.dart';
 import 'patient_upload.dart';
-import 'patient_chatbot.dart';
 import 'patient_profile.dart';
 
 class PatientMainScreen extends StatefulWidget {
@@ -21,7 +21,7 @@ class _PatientMainScreenState extends State<PatientMainScreen> {
     PatientDashboard(),
     PatientUploadScreen(),
     PatientXraysScreen(),
-    PatientChatbotScreen(),
+    CareChatScreen(),
     PatientProfileScreen(),
   ];
 
@@ -35,9 +35,14 @@ class _PatientMainScreenState extends State<PatientMainScreen> {
           color: isDark ? AppTheme.darkCardBg : Colors.white,
           border: Border(
               top: BorderSide(
-                  color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor)),
+                  color: isDark
+                      ? AppTheme.darkBorderColor
+                      : AppTheme.borderColor)),
           boxShadow: [
-            BoxShadow(color: const Color(0x0A000000), blurRadius: 12, offset: const Offset(0, -2)),
+            BoxShadow(
+                color: const Color(0x0A000000),
+                blurRadius: 12,
+                offset: const Offset(0, -2)),
           ],
         ),
         child: SafeArea(
@@ -47,11 +52,41 @@ class _PatientMainScreenState extends State<PatientMainScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home', index: 0, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.upload_file_outlined, activeIcon: Icons.upload_file, label: 'Upload', index: 1, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.image_outlined, activeIcon: Icons.image, label: 'X-rays', index: 2, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Ask AI', index: 3, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', index: 4, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
+                _NavItem(
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home,
+                    label: 'Home',
+                    index: 0,
+                    current: _currentIndex,
+                    onTap: (i) => setState(() => _currentIndex = i)),
+                _NavItem(
+                    icon: Icons.upload_file_outlined,
+                    activeIcon: Icons.upload_file,
+                    label: 'Upload',
+                    index: 1,
+                    current: _currentIndex,
+                    onTap: (i) => setState(() => _currentIndex = i)),
+                _NavItem(
+                    icon: Icons.image_outlined,
+                    activeIcon: Icons.image,
+                    label: 'X-rays',
+                    index: 2,
+                    current: _currentIndex,
+                    onTap: (i) => setState(() => _currentIndex = i)),
+                _NavItem(
+                    icon: Icons.forum_outlined,
+                    activeIcon: Icons.forum,
+                    label: 'Chat',
+                    index: 3,
+                    current: _currentIndex,
+                    onTap: (i) => setState(() => _currentIndex = i)),
+                _NavItem(
+                    icon: Icons.person_outline,
+                    activeIcon: Icons.person,
+                    label: 'Profile',
+                    index: 4,
+                    current: _currentIndex,
+                    onTap: (i) => setState(() => _currentIndex = i)),
               ],
             ),
           ),
@@ -67,32 +102,41 @@ class _NavItem extends StatelessWidget {
   final int index, current;
   final Function(int) onTap;
 
-  const _NavItem({required this.icon, required this.activeIcon, required this.label,
-    required this.index, required this.current, required this.onTap});
+  const _NavItem(
+      {required this.icon,
+      required this.activeIcon,
+      required this.label,
+      required this.index,
+      required this.current,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isActive = index == current;
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: isActive ? BoxDecoration(
-          color: AppTheme.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ) : null,
+        decoration: isActive
+            ? BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              )
+            : null,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(isActive ? activeIcon : icon, size: 22,
+            Icon(isActive ? activeIcon : icon,
+                size: 22,
                 color: isActive ? AppTheme.primary : AppTheme.textSecondary),
             const SizedBox(height: 3),
-            Text(label, style: GoogleFonts.dmSans(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color: isActive ? AppTheme.primary : AppTheme.textSecondary)),
+            Text(label,
+                style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    color:
+                        isActive ? AppTheme.primary : AppTheme.textSecondary)),
           ],
         ),
       ),

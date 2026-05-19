@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/shared_widgets.dart';
 
@@ -12,54 +14,77 @@ class DoctorDashboard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
+    final user = context.watch<AuthProvider>().user;
+    final name =
+        (user?.name.trim().isNotEmpty ?? false) ? user!.name.trim() : 'Doctor';
+    final greetingName =
+        name.toLowerCase().startsWith('dr') ? name : 'Dr. $name';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: const SessionAppTopBar(onProfileTap: null),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 1000), // Professional centering on large screens
+          constraints: const BoxConstraints(
+              maxWidth: 1000), // Professional centering on large screens
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header
-                Text('Dashboard', style: GoogleFonts.dmSans(
-                  fontSize: 26, 
-                  fontWeight: FontWeight.w800,
-                  color: theme.textTheme.headlineLarge?.color,
-                )),
+                Text('Dashboard',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: theme.textTheme.headlineLarge?.color,
+                    )),
                 const SizedBox(height: 4),
-                Text('Welcome back, Dr. Anderson.', style: GoogleFonts.dmSans(
-                  fontSize: 14, 
-                  color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
-                )),
+                Text('Welcome back, $greetingName.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: isDark
+                          ? AppTheme.darkTextSecondary
+                          : AppTheme.textSecondary,
+                    )),
                 const SizedBox(height: 20),
-                
+
                 // Stats grid - Responsive Column Count
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-                    return GridView.count(
-                      crossAxisCount: crossAxisCount,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: constraints.maxWidth > 600 ? 1.6 : 1.4,
-                      children: const [
-                        StatCard(title: 'Total Analyses', value: '1,284', icon: Icons.analytics_outlined),
-                        StatCard(title: 'Active Patients', value: '248', icon: Icons.people_outline, iconColor: Color(0xFF7B61FF)),
-                        StatCard(title: 'Pending', value: '7', icon: Icons.pending_outlined, iconColor: AppTheme.warning),
-                        StatCard(title: 'Accuracy', value: '95.2%', icon: Icons.verified_outlined, iconColor: AppTheme.success),
-                      ],
-                    );
-                  }
-                ),
-                
+                LayoutBuilder(builder: (context, constraints) {
+                  final crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
+                  return GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: constraints.maxWidth > 600 ? 1.6 : 1.4,
+                    children: const [
+                      StatCard(
+                          title: 'Total Analyses',
+                          value: '1,284',
+                          icon: Icons.analytics_outlined),
+                      StatCard(
+                          title: 'Active Patients',
+                          value: '248',
+                          icon: Icons.people_outline,
+                          iconColor: Color(0xFF7B61FF)),
+                      StatCard(
+                          title: 'Pending',
+                          value: '7',
+                          icon: Icons.pending_outlined,
+                          iconColor: AppTheme.warning),
+                      StatCard(
+                          title: 'Accuracy',
+                          value: '95.2%',
+                          icon: Icons.verified_outlined,
+                          iconColor: AppTheme.success),
+                    ],
+                  );
+                }),
+
                 const SizedBox(height: 20),
-                
+
                 // Content Grid for Charts and Lists
                 if (screenWidth > 800)
                   Row(
@@ -84,9 +109,9 @@ class DoctorDashboard extends StatelessWidget {
                       _DiseaseDistributionSection(),
                     ],
                   ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Model Accuracy Trend (Always full width in its container)
                 const SectionCard(
                   title: 'Model Accuracy Trend',
@@ -111,11 +136,23 @@ class _RecentDiagnosesSection extends StatelessWidget {
       description: 'Latest AI-powered analysis',
       child: Column(
         children: [
-          _DiagnosisRow(initials: 'JS', name: 'John Smith', date: '2025-10-15', diagnosis: 'Pneumonia'),
+          _DiagnosisRow(
+              initials: 'JS',
+              name: 'John Smith',
+              date: '2025-10-15',
+              diagnosis: 'Pneumonia'),
           Divider(height: 20),
-          _DiagnosisRow(initials: 'MB', name: 'Michael Brown', date: '2025-10-13', diagnosis: 'Tuberculosis'),
+          _DiagnosisRow(
+              initials: 'MB',
+              name: 'Michael Brown',
+              date: '2025-10-13',
+              diagnosis: 'Tuberculosis'),
           Divider(height: 20),
-          _DiagnosisRow(initials: 'SJ', name: 'Sarah Johnson', date: '2025-10-14', diagnosis: 'Normal'),
+          _DiagnosisRow(
+              initials: 'SJ',
+              name: 'Sarah Johnson',
+              date: '2025-10-14',
+              diagnosis: 'Normal'),
         ],
       ),
     );
@@ -132,13 +169,19 @@ class _DiseaseDistributionSection extends StatelessWidget {
         children: [
           SizedBox(height: 180, child: _DiseaseChart()),
           const SizedBox(height: 16),
-          const LegendItem(color: AppTheme.primary, label: 'Normal', percentage: '45%'),
+          const LegendItem(
+              color: AppTheme.primary, label: 'Normal', percentage: '45%'),
           const SizedBox(height: 8),
-          const LegendItem(color: Color(0xFFEF5350), label: 'Pneumonia', percentage: '30%'),
+          const LegendItem(
+              color: Color(0xFFEF5350), label: 'Pneumonia', percentage: '30%'),
           const SizedBox(height: 8),
-          const LegendItem(color: Color(0xFFFFB74D), label: 'Tuberculosis', percentage: '15%'),
+          const LegendItem(
+              color: Color(0xFFFFB74D),
+              label: 'Tuberculosis',
+              percentage: '15%'),
           const SizedBox(height: 8),
-          const LegendItem(color: Color(0xFF90CAF9), label: 'Other', percentage: '10%'),
+          const LegendItem(
+              color: Color(0xFF90CAF9), label: 'Other', percentage: '10%'),
         ],
       ),
     );
@@ -170,15 +213,18 @@ class _DiagnosisRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: GoogleFonts.dmSans(
-                  fontSize: 14, 
-                  fontWeight: FontWeight.w600,
-                  color: theme.textTheme.bodyLarge?.color
-              )),
-              Text(date, style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
-              )),
+              Text(name,
+                  style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color)),
+              Text(date,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.textSecondary,
+                  )),
             ],
           ),
         ),
@@ -194,10 +240,30 @@ class _DiseaseChart extends StatelessWidget {
     return PieChart(
       PieChartData(
         sections: [
-          PieChartSectionData(value: 45, color: AppTheme.primary, radius: 60, title: '', showTitle: false),
-          PieChartSectionData(value: 30, color: const Color(0xFFEF5350), radius: 60, title: '', showTitle: false),
-          PieChartSectionData(value: 15, color: const Color(0xFFFFB74D), radius: 60, title: '', showTitle: false),
-          PieChartSectionData(value: 10, color: const Color(0xFF90CAF9), radius: 60, title: '', showTitle: false),
+          PieChartSectionData(
+              value: 45,
+              color: AppTheme.primary,
+              radius: 60,
+              title: '',
+              showTitle: false),
+          PieChartSectionData(
+              value: 30,
+              color: const Color(0xFFEF5350),
+              radius: 60,
+              title: '',
+              showTitle: false),
+          PieChartSectionData(
+              value: 15,
+              color: const Color(0xFFFFB74D),
+              radius: 60,
+              title: '',
+              showTitle: false),
+          PieChartSectionData(
+              value: 10,
+              color: const Color(0xFF90CAF9),
+              radius: 60,
+              title: '',
+              showTitle: false),
         ],
         centerSpaceRadius: 40,
         sectionsSpace: 3,
@@ -214,7 +280,8 @@ class _AccuracyChart extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final gridColor = isDark ? AppTheme.darkBorderColor : AppTheme.borderColor;
-    final textColor = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final textColor =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
 
     return LineChart(
       LineChartData(
@@ -258,16 +325,24 @@ class _AccuracyChart extends StatelessWidget {
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
-        minX: 0, maxX: 4,
-        minY: 80, maxY: 100,
+        minX: 0,
+        maxX: 4,
+        minY: 80,
+        maxY: 100,
         lineBarsData: [
           LineChartBarData(
             spots: const [
-              FlSpot(0, 85), FlSpot(1, 89), FlSpot(2, 93), FlSpot(3, 97), FlSpot(4, 95.2),
+              FlSpot(0, 85),
+              FlSpot(1, 89),
+              FlSpot(2, 93),
+              FlSpot(3, 97),
+              FlSpot(4, 95.2),
             ],
             isCurved: true,
             color: AppTheme.primary,

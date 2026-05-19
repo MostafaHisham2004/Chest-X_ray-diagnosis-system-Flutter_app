@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
+import '../../shared/care_chat_screen.dart';
 import 'doctor_dashboard.dart';
 import 'doctor_upload.dart';
 import 'doctor_patients.dart';
-import 'doctor_chatbot.dart';
 import 'doctor_profile.dart';
 
 class DoctorMainScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
     DoctorDashboard(),
     DoctorUploadScreen(),
     DoctorPatientsScreen(),
-    DoctorChatbotScreen(),
+    CareChatScreen(),
     DoctorProfileScreen(),
   ];
 
@@ -42,15 +42,35 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
               backgroundColor: theme.cardTheme.color,
               indicatorColor: AppTheme.primary.withOpacity(0.1),
               selectedIconTheme: const IconThemeData(color: AppTheme.primary),
-              unselectedIconTheme: IconThemeData(color: theme.textTheme.bodySmall?.color),
-              selectedLabelTextStyle: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
-              unselectedLabelTextStyle: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12),
+              unselectedIconTheme:
+                  IconThemeData(color: theme.textTheme.bodySmall?.color),
+              selectedLabelTextStyle: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12),
+              unselectedLabelTextStyle: TextStyle(
+                  color: theme.textTheme.bodySmall?.color, fontSize: 12),
               destinations: const [
-                NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
-                NavigationRailDestination(icon: Icon(Icons.upload_file_outlined), selectedIcon: Icon(Icons.upload_file), label: Text('Upload')),
-                NavigationRailDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: Text('Patients')),
-                NavigationRailDestination(icon: Icon(Icons.smart_toy_outlined), selectedIcon: Icon(Icons.smart_toy), label: Text('AI')),
-                NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
+                NavigationRailDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home),
+                    label: Text('Home')),
+                NavigationRailDestination(
+                    icon: Icon(Icons.upload_file_outlined),
+                    selectedIcon: Icon(Icons.upload_file),
+                    label: Text('Upload')),
+                NavigationRailDestination(
+                    icon: Icon(Icons.people_outline),
+                    selectedIcon: Icon(Icons.people),
+                    label: Text('Patients')),
+                NavigationRailDestination(
+                    icon: Icon(Icons.forum_outlined),
+                    selectedIcon: Icon(Icons.forum),
+                    label: Text('Chat')),
+                NavigationRailDestination(
+                    icon: Icon(Icons.person_outline),
+                    selectedIcon: Icon(Icons.person),
+                    label: Text('Profile')),
               ],
             ),
           Expanded(
@@ -58,33 +78,71 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: isWide ? null : Container(
-        decoration: BoxDecoration(
-          color: theme.cardTheme.color,
-          border: Border(
-              top: BorderSide(
-                  color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, -2)),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home', index: 0, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.upload_file_outlined, activeIcon: Icons.upload_file, label: 'Upload', index: 1, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Patients', index: 2, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.smart_toy_outlined, activeIcon: Icons.smart_toy, label: 'AI', index: 3, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-                _NavItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile', index: 4, current: _currentIndex, onTap: (i) => setState(() => _currentIndex = i)),
-              ],
+      bottomNavigationBar: isWide
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: theme.cardTheme.color,
+                border: Border(
+                    top: BorderSide(
+                        color: isDark
+                            ? AppTheme.darkBorderColor
+                            : AppTheme.borderColor)),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Color(0x0A000000),
+                      blurRadius: 12,
+                      offset: Offset(0, -2)),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _NavItem(
+                          icon: Icons.home_outlined,
+                          activeIcon: Icons.home,
+                          label: 'Home',
+                          index: 0,
+                          current: _currentIndex,
+                          onTap: (i) => setState(() => _currentIndex = i)),
+                      _NavItem(
+                          icon: Icons.upload_file_outlined,
+                          activeIcon: Icons.upload_file,
+                          label: 'Upload',
+                          index: 1,
+                          current: _currentIndex,
+                          onTap: (i) => setState(() => _currentIndex = i)),
+                      _NavItem(
+                          icon: Icons.people_outline,
+                          activeIcon: Icons.people,
+                          label: 'Patients',
+                          index: 2,
+                          current: _currentIndex,
+                          onTap: (i) => setState(() => _currentIndex = i)),
+                      _NavItem(
+                          icon: Icons.forum_outlined,
+                          activeIcon: Icons.forum,
+                          label: 'Chat',
+                          index: 3,
+                          current: _currentIndex,
+                          onTap: (i) => setState(() => _currentIndex = i)),
+                      _NavItem(
+                          icon: Icons.person_outline,
+                          activeIcon: Icons.person,
+                          label: 'Profile',
+                          index: 4,
+                          current: _currentIndex,
+                          onTap: (i) => setState(() => _currentIndex = i)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -95,34 +153,44 @@ class _NavItem extends StatelessWidget {
   final int index, current;
   final Function(int) onTap;
 
-  const _NavItem({required this.icon, required this.activeIcon, required this.label,
-    required this.index, required this.current, required this.onTap});
+  const _NavItem(
+      {required this.icon,
+      required this.activeIcon,
+      required this.label,
+      required this.index,
+      required this.current,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isActive = index == current;
-    final color = isActive ? AppTheme.primary : (theme.textTheme.bodySmall?.color ?? AppTheme.textSecondary);
-    
+    final color = isActive
+        ? AppTheme.primary
+        : (theme.textTheme.bodySmall?.color ?? AppTheme.textSecondary);
+
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: isActive ? BoxDecoration(
-          color: AppTheme.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ) : null,
+        decoration: isActive
+            ? BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              )
+            : null,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(isActive ? activeIcon : icon, size: 22, color: color),
             const SizedBox(height: 3),
-            Text(label, style: TextStyle(
-                fontSize: 10,
-                fontFamily: 'DM Sans',
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color: color)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'DM Sans',
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    color: color)),
           ],
         ),
       ),

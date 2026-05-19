@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import 'admin/admin_main.dart';
 import 'doctor/doctor_main.dart';
 import 'patient/patient_main.dart';
 
@@ -72,9 +73,11 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
-    final destination = auth.role == 'doctor'
-        ? const DoctorMainScreen()
-        : const PatientMainScreen();
+    final destination = auth.role == 'admin'
+        ? const AdminMainScreen()
+        : auth.role == 'doctor'
+            ? const DoctorMainScreen()
+            : const PatientMainScreen();
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => destination),
@@ -91,7 +94,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
@@ -104,16 +107,21 @@ class _AuthScreenState extends State<AuthScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFFE0F7FA), Colors.white, Color(0xFFE0F7FA)],
+                    colors: [
+                      Color(0xFFE0F7FA),
+                      Colors.white,
+                      Color(0xFFE0F7FA)
+                    ],
                   ),
                 ),
               ),
             ),
-          
+
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 450),
                   child: Column(
@@ -121,7 +129,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     children: [
                       // Logo
                       Container(
-                        width: 72, height: 72,
+                        width: 72,
+                        height: 72,
                         decoration: BoxDecoration(
                           color: AppTheme.primary,
                           borderRadius: BorderRadius.circular(20),
@@ -134,37 +143,48 @@ class _AuthScreenState extends State<AuthScreen> {
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Text('AI', style: TextStyle(
-                          fontSize: 30, fontWeight: FontWeight.w900, color: Colors.white,
-                        )),
+                        child: const Text('AI',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            )),
                       ),
                       const SizedBox(height: 20),
-                      Text('MediScan AI', style: GoogleFonts.dmSans(
-                        fontSize: 32, 
-                        fontWeight: FontWeight.w800, 
-                        color: theme.textTheme.headlineLarge?.color,
-                      )),
+                      Text('MediScan AI',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: theme.textTheme.headlineLarge?.color,
+                          )),
                       const SizedBox(height: 8),
-                      Text('Advanced AI X-ray Diagnosis',
+                      Text(
+                        'Advanced AI X-ray Diagnosis',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.dmSans(
-                          fontSize: 15, 
-                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
+                          fontSize: 15,
+                          color: isDark
+                              ? AppTheme.darkTextSecondary
+                              : AppTheme.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 40),
-                      
+
                       // Auth Card
                       Container(
                         decoration: BoxDecoration(
                           color: theme.cardTheme.color,
                           borderRadius: BorderRadius.circular(24),
-                          border: theme.cardTheme.shape is RoundedRectangleBorder 
-                              ? Border.fromBorderSide((theme.cardTheme.shape as RoundedRectangleBorder).side)
-                              : null,
+                          border:
+                              theme.cardTheme.shape is RoundedRectangleBorder
+                                  ? Border.fromBorderSide((theme.cardTheme.shape
+                                          as RoundedRectangleBorder)
+                                      .side)
+                                  : null,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                              color:
+                                  Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -178,7 +198,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               height: 48,
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
@@ -186,18 +207,20 @@ class _AuthScreenState extends State<AuthScreen> {
                                   _TabButton(
                                     label: 'Sign In',
                                     isActive: _isSignIn,
-                                    onTap: () => setState(() => _isSignIn = true),
+                                    onTap: () =>
+                                        setState(() => _isSignIn = true),
                                   ),
                                   _TabButton(
                                     label: 'Sign Up',
                                     isActive: !_isSignIn,
-                                    onTap: () => setState(() => _isSignIn = false),
+                                    onTap: () =>
+                                        setState(() => _isSignIn = false),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(height: 28),
-                            
+
                             if (!_isSignIn) ...[
                               _FormField(
                                 label: 'Full Name',
@@ -208,7 +231,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                               const SizedBox(height: 18),
                             ],
-                            
+
                             _FormField(
                               label: 'Email Address',
                               controller: _emailController,
@@ -218,37 +241,40 @@ class _AuthScreenState extends State<AuthScreen> {
                               theme: theme,
                             ),
                             const SizedBox(height: 18),
-                            
+
                             _PasswordField(
                               label: 'Password',
                               controller: _passwordController,
-                              hint: '••••••••',
+                              hint: '********',
                               obscure: _obscurePassword,
-                              onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                              onToggle: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                               theme: theme,
                             ),
-                            
+
                             if (!_isSignIn) ...[
                               const SizedBox(height: 18),
                               _PasswordField(
                                 label: 'Confirm Password',
                                 controller: _confirmPassController,
-                                hint: '••••••••',
+                                hint: '********',
                                 obscure: _obscureConfirm,
-                                onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                                onToggle: () => setState(
+                                    () => _obscureConfirm = !_obscureConfirm),
                                 theme: theme,
                               ),
                             ],
-                            
+
                             const SizedBox(height: 32),
-                            
+
                             Consumer<AuthProvider>(
                               builder: (context, auth, _) {
                                 return SizedBox(
                                   width: double.infinity,
                                   height: 52,
                                   child: ElevatedButton(
-                                    onPressed: auth.isLoading ? null : _handleAuth,
+                                    onPressed:
+                                        auth.isLoading ? null : _handleAuth,
                                     style: ElevatedButton.styleFrom(
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(14),
@@ -264,7 +290,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                             ),
                                           )
                                         : Text(
-                                            _isSignIn ? 'Sign In' : 'Get Started',
+                                            _isSignIn
+                                                ? 'Sign In'
+                                                : 'Get Started',
                                             style: GoogleFonts.dmSans(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -278,20 +306,26 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Footer
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            width: 8, height: 8,
-                            decoration: const BoxDecoration(color: AppTheme.success, shape: BoxShape.circle),
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                                color: AppTheme.success,
+                                shape: BoxShape.circle),
                           ),
                           const SizedBox(width: 8),
-                          Text('System Status: Online', style: GoogleFonts.dmSans(
-                            fontSize: 12, 
-                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
-                          )),
+                          Text('System Status: Online',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: isDark
+                                    ? AppTheme.darkTextSecondary
+                                    : AppTheme.textSecondary,
+                              )),
                         ],
                       ),
                     ],
@@ -311,13 +345,14 @@ class _TabButton extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  const _TabButton({required this.label, required this.isActive, required this.onTap});
+  const _TabButton(
+      {required this.label, required this.isActive, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -325,20 +360,28 @@ class _TabButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           decoration: BoxDecoration(
-            color: isActive 
-                ? (isDark ? theme.cardTheme.color : Colors.white) 
+            color: isActive
+                ? (isDark ? theme.cardTheme.color : Colors.white)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: isActive ? [
-              BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 2))
-            ] : [],
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2))
+                  ]
+                : [],
           ),
           alignment: Alignment.center,
-          child: Text(label, style: GoogleFonts.dmSans(
-            fontSize: 14,
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            color: isActive ? AppTheme.primary : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-          )),
+          child: Text(label,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive
+                    ? AppTheme.primary
+                    : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+              )),
         ),
       ),
     );
@@ -367,9 +410,12 @@ class _FormField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.dmSans(
-          fontSize: 13, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color,
-        )),
+        Text(label,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: theme.textTheme.bodyLarge?.color,
+            )),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -407,9 +453,12 @@ class _PasswordField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.dmSans(
-          fontSize: 13, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color,
-        )),
+        Text(label,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: theme.textTheme.bodyLarge?.color,
+            )),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -419,7 +468,11 @@ class _PasswordField extends StatelessWidget {
             hintText: hint,
             prefixIcon: const Icon(Icons.lock_outline, size: 20),
             suffixIcon: IconButton(
-              icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
+              icon: Icon(
+                  obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20),
               onPressed: onToggle,
             ),
           ),
