@@ -65,7 +65,7 @@ class _CareChatScreenState extends State<CareChatScreen> {
         _threads = threads;
         _isLoading = false;
       });
-      if (threads.isNotEmpty) {
+      if (threads.isNotEmpty && _selectedThread == null) {
         await _selectThread(threads.first);
       }
     } on ApiException catch (e) {
@@ -204,7 +204,7 @@ class _CareChatScreenState extends State<CareChatScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const SessionAppTopBar(),
+      appBar: const SessionAppTopBar(hideProfileMenu: true),
       body: Column(
         children: [
           Container(

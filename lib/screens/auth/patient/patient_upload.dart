@@ -1,5 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_client.dart';
+import '../../../services/xray_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/shared_widgets.dart';
 
@@ -11,27 +19,46 @@ class PatientUploadScreen extends StatefulWidget {
 }
 
 class _PatientUploadScreenState extends State<PatientUploadScreen> {
-  bool _fileSelected = false;
+  final _service = XrayService();
+  final _picker = ImagePicker();
+  File? _selectedFile;
+  String? _fileName;
   bool _isSubmitting = false;
-  final _symptomsCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
+
+  Future<void> _pickFile() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2048,
+      maxHeight: 2048,
+    );
+    if (picked == null) return;
+    setState(() {
+      _selectedFile = File(picked.path);
+      _fileName = picked.name;
+    });
+  }
 
   @override
   void dispose() {
-    _symptomsCtrl.dispose();
-    _notesCtrl.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null || _selectedFile == null) return;
+
     setState(() => _isSubmitting = true);
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      await _service.uploadXray(token: token, file: _selectedFile!);
       if (!mounted) return;
-      setState(() => _isSubmitting = false);
+      setState(() {
+        _isSubmitting = false;
+        _selectedFile = null;
+        _fileName = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-              'X-ray submitted for review! You\'ll receive results in 24-48 hours.',
+          content: Text('X-ray uploaded successfully! AI analysis will begin shortly.',
               style: GoogleFonts.dmSans()),
           backgroundColor: AppTheme.primary,
           behavior: SnackBarBehavior.floating,
@@ -39,7 +66,27 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-    });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message, style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed. Check your connection.', style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -47,7 +94,7 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.background,
-      appBar: const SessionAppTopBar(),
+      appBar: const SessionAppTopBar(hideProfileMenu: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -70,35 +117,37 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               description: 'Drag and drop or click to select your X-ray',
               child: Column(
                 children: [
-                  if (!_fileSelected)
-                    UploadDropzone(
-                        onTap: () => setState(() => _fileSelected = true))
+                  if (_selectedFile == null)
+                    UploadDropzone(onTap: _pickFile)
                   else
                     Column(
                       children: [
                         Container(
-                          height: 140,
+                          height: 220,
                           decoration: BoxDecoration(
                             color: const Color(0xFF1A1A2E),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Stack(
+                          child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              Icon(Icons.image,
-                                  size: 48, color: Colors.white30),
+                              const Icon(Icons.image,
+                                  size: 64, color: Colors.white30),
                               Positioned(
                                   top: 12,
                                   right: 12,
                                   child: DiagnosisBadge(
-                                      label: 'xray_chest.jpg',
+                                      label: _fileName ?? 'xray_image.jpg',
                                       type: BadgeType.success)),
                             ],
                           ),
                         ),
                         TextButton.icon(
                           onPressed: () =>
-                              setState(() => _fileSelected = false),
+                              setState(() {
+                                _selectedFile = null;
+                                _fileName = null;
+                              }),
                           icon: const Icon(Icons.close, size: 14),
                           label: const Text('Remove file'),
                         ),
@@ -108,58 +157,22 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Additional Info
-            SectionCard(
-              title: 'Additional Information',
-              description: 'Help your doctor understand your condition',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Symptoms (Optional)',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 13, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _symptomsCtrl,
-                    style: GoogleFonts.dmSans(fontSize: 14),
-                    decoration: const InputDecoration(
-                        hintText: 'e.g., Chest pain, difficulty breathing'),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Additional Notes (Optional)',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 13, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _notesCtrl,
-                    maxLines: 3,
-                    style: GoogleFonts.dmSans(fontSize: 14),
-                    decoration: const InputDecoration(
-                      hintText:
-                          'Any other information that might be helpful for your doctor...',
-                      contentPadding: EdgeInsets.all(14),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: _fileSelected ? _submit : null,
-                      icon: _isSubmitting
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.send_outlined, size: 18),
-                      label: Text(
-                          _isSubmitting ? 'Submitting...' : 'Submit for Review',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 15, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ],
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _selectedFile != null ? _submit : null,
+                icon: _isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send_outlined, size: 18),
+                label: Text(
+                    _isSubmitting ? 'Uploading...' : 'Submit for Review',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 15, fontWeight: FontWeight.w600)),
               ),
             ),
             const SizedBox(height: 16),

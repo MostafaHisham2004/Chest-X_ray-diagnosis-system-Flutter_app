@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_client.dart';
+import '../../../services/xray_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/shared_widgets.dart';
-
-final _patients = [
-  {'id': 'P001', 'name': 'John Smith', 'age': '45', 'diagnosis': 'Pneumonia', 'date': '2025-10-15', 'status': 'completed'},
-  {'id': 'P002', 'name': 'Sarah Johnson', 'age': '38', 'diagnosis': 'Normal', 'date': '2025-10-14', 'status': 'completed'},
-  {'id': 'P003', 'name': 'Michael Brown', 'age': '52', 'diagnosis': 'Tuberculosis', 'date': '2025-10-13', 'status': 'reviewing'},
-  {'id': 'P004', 'name': 'Emily Davis', 'age': '29', 'diagnosis': 'Pending Analysis', 'date': '2025-10-17', 'status': 'pending'},
-  {'id': 'P005', 'name': 'Robert Wilson', 'age': '61', 'diagnosis': 'Pneumonia', 'date': '2025-10-12', 'status': 'completed'},
-];
 
 class DoctorPatientsScreen extends StatefulWidget {
   const DoctorPatientsScreen({super.key});
@@ -19,17 +16,88 @@ class DoctorPatientsScreen extends StatefulWidget {
 }
 
 class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
+  final _service = XrayService();
+  List<Map<String, dynamic>> _patients = [];
+  bool _isLoading = true;
+  String? _error;
   String _search = '';
 
-  List<Map<String, String>> get _filtered => _patients
-      .where((p) => p['name']!.toLowerCase().contains(_search.toLowerCase()) ||
-      p['id']!.toLowerCase().contains(_search.toLowerCase()))
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final patients = await _service.fetchDoctorPatients(token);
+      if (!mounted) return;
+      setState(() {
+        _patients = patients;
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Unable to load patients.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered => _patients
+      .where((p) {
+        if (_search.isEmpty) return true;
+        final name = (p['name'] as String? ?? '').toLowerCase();
+        final email = (p['email'] as String? ?? '').toLowerCase();
+        final q = _search.toLowerCase();
+        return name.contains(q) || email.contains(q);
+      })
       .toList();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final auth = context.watch<AuthProvider>();
+    final isPending = auth.user?.verificationStatus == null || auth.user?.verificationStatus == 'pending';
+
+    if (isPending) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: const SessionAppTopBar(hideProfileMenu: true),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 48, color: AppTheme.warning),
+                const SizedBox(height: 16),
+                Text('Account Pending Approval',
+                    style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.warning)),
+                const SizedBox(height: 8),
+                Text('Your account is awaiting admin verification. You will be able to manage patients once approved.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(fontSize: 14, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     Border cardBorder = Border.all(
       color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor,
@@ -39,163 +107,153 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
     if (shape is RoundedRectangleBorder) {
       cardBorder = Border.fromBorderSide(shape.side);
     }
+
+    final filtered = _filtered;
     
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const SessionAppTopBar(),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('Patient Management', style: GoogleFonts.dmSans(
-                  fontSize: 24, fontWeight: FontWeight.w800,
-                  color: theme.textTheme.headlineMedium?.color,
-                )),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddPatient(context),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: Text('Add Patient', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      appBar: const SessionAppTopBar(hideProfileMenu: true),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_error != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.error.withOpacity(0.25)),
                   ),
+                  child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                color: theme.cardTheme.color,
-                borderRadius: BorderRadius.circular(16),
-                border: cardBorder,
-              ),
-              child: Column(
+              Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  Text('Patient Management', style: GoogleFonts.dmSans(
+                    fontSize: 24, fontWeight: FontWeight.w800,
+                    color: theme.textTheme.headlineMedium?.color,
+                  )),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _load,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_isLoading)
+                const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()))
+              else
+                Container(
+                  decoration: BoxDecoration(
+                    color: theme.cardTheme.color,
+                    borderRadius: BorderRadius.circular(16),
+                    border: cardBorder,
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('All Patients', style: GoogleFonts.dmSans(
-                                    fontSize: 16, 
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.textTheme.titleLarge?.color,
-                                  )),
-                                  Text('Complete list of registered patients', style: GoogleFonts.dmSans(
-                                    fontSize: 12, 
-                                    color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
-                                  )),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              width: 180,
-                              child: TextField(
-                                onChanged: (v) => setState(() => _search = v),
-                                style: GoogleFonts.dmSans(fontSize: 13),
-                                decoration: const InputDecoration(
-                                  hintText: 'Search patients...',
-                                  prefixIcon: Icon(Icons.search, size: 18),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('All Patients', style: GoogleFonts.dmSans(
+                                        fontSize: 16, 
+                                        fontWeight: FontWeight.w700,
+                                        color: theme.textTheme.titleLarge?.color,
+                                      )),
+                                      Text('${filtered.length} patient${filtered.length == 1 ? '' : 's'}', style: GoogleFonts.dmSans(
+                                        fontSize: 12, 
+                                        color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
+                                      )),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                                SizedBox(
+                                  width: 180,
+                                  child: TextField(
+                                    onChanged: (v) => setState(() => _search = v),
+                                    style: GoogleFonts.dmSans(fontSize: 13),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Search patients...',
+                                      prefixIcon: Icon(Icons.search, size: 18),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // Table header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    color: isDark ? AppTheme.darkBackground : AppTheme.background,
-                    child: Row(
-                      children: [
-                        _TableHeader('ID', flex: 1),
-                        _TableHeader('Name', flex: 2),
-                        _TableHeader('Age', flex: 1),
-                        _TableHeader('Diagnosis', flex: 2),
-                        _TableHeader('Status', flex: 2),
-                        const _TableHeader('', flex: 1),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // Patients list
-                  ..._filtered.map((patient) => Column(
-                    children: [
-                      _PatientRow(
-                        patient: patient,
-                        onView: () => _showPatientDetail(context, patient),
                       ),
                       const Divider(height: 1),
-                    ],
-                  )),
-                  if (_filtered.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text('No patients found', style: GoogleFonts.dmSans(color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                      // Table header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        color: isDark ? AppTheme.darkBackground : AppTheme.background,
+                        child: Row(
+                          children: [
+                            const _TableHeader('Name', flex: 2),
+                            const _TableHeader('Diagnosis', flex: 2),
+                            const _TableHeader('Date', flex: 2),
+                            const _TableHeader('Status', flex: 2),
+                            const _TableHeader('', flex: 1),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+                      const Divider(height: 1),
+                      // Patients list
+                      ...filtered.map((patient) => Column(
+                        children: [
+                          _PatientRow(
+                            patient: patient,
+                            onView: () => _showPatientDetail(context, patient),
+                          ),
+                          const Divider(height: 1),
+                        ],
+                      )),
+                      if (filtered.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Center(
+                            child: Text('No patients found', style: GoogleFonts.dmSans(color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showAddPatient(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Add New Patient', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 20),
-            const TextField(decoration: InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person_outline))),
-            const SizedBox(height: 12),
-            const TextField(decoration: InputDecoration(labelText: 'Age', prefixIcon: Icon(Icons.cake_outlined)), keyboardType: TextInputType.number),
-            const SizedBox(height: 12),
-            const TextField(decoration: InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined))),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Add Patient', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPatientDetail(BuildContext context, Map<String, String> patient) {
+  void _showPatientDetail(BuildContext context, Map<String, dynamic> patient) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
         final sheetTheme = Theme.of(sheetContext);
         final isDark = sheetTheme.brightness == Brightness.dark;
+        final diagnosis = patient['latestDiagnosis']?['label'] as String? ??
+            patient['latestDiagnosis']?['prediction'] as String? ??
+            'Pending';
+        final status = patient['status'] as String? ?? 'pending';
+        final date = patient['latestDate'] as String? ?? '';
+        final formattedDate = date.isNotEmpty ? date.split('T')[0] : '';
         
         return DraggableScrollableSheet(
           expand: false,
@@ -214,20 +272,19 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                     IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(sheetContext)),
                   ],
                 ),
-                Text('Complete medical record and history', style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
+                Text('Medical record', style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
                 const SizedBox(height: 20),
-                // Detail grid
                 Row(
                   children: [
-                    _DetailField(label: 'Patient ID', value: patient['id']!),
+                    _DetailField(label: 'Name', value: patient['name'] as String? ?? 'Unknown'),
                     const SizedBox(width: 16),
-                    _DetailField(label: 'Full Name', value: patient['name']!),
+                    _DetailField(label: 'Gender', value: patient['gender'] as String? ?? '--'),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _DetailField(label: 'Age', value: '${patient['age']} years'),
+                    _DetailField(label: 'Email', value: patient['email'] as String? ?? '--'),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -235,54 +292,34 @@ class _DoctorPatientsScreenState extends State<DoctorPatientsScreen> {
                         children: [
                           Text('Status', style: GoogleFonts.dmSans(fontSize: 12, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary)),
                           const SizedBox(height: 4),
-                          DiagnosisBadge(label: patient['status']!, type: diagnosisToType(patient['status']!)),
+                          DiagnosisBadge(label: status, type: diagnosisToType(status)),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBackground : AppTheme.background,
-                    borderRadius: BorderRadius.circular(12),
+                if (diagnosis != 'Pending')
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBackground : AppTheme.background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const Icon(Icons.history, size: 18, color: AppTheme.primary),
+                          const SizedBox(width: 8),
+                          Text('Latest Diagnosis', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700)),
+                        ]),
+                        const SizedBox(height: 12),
+                        _HistoryItem(diagnosis: diagnosis, date: formattedDate, description: 'AI-assisted chest X-ray analysis'),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.history, size: 18, color: AppTheme.primary),
-                        const SizedBox(width: 8),
-                        Text('Diagnostic History', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700)),
-                      ]),
-                      const SizedBox(height: 12),
-                      _HistoryItem(diagnosis: patient['diagnosis']!, date: patient['date']!, description: 'AI-assisted chest X-ray analysis'),
-                      const Divider(height: 16),
-                      const _HistoryItem(diagnosis: 'Annual Checkup', date: '2025-09-10', description: 'Routine examination - Normal'),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.description_outlined, size: 16),
-                        label: const Text('View Full Report'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                        label: const Text('Schedule'),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -312,7 +349,7 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _PatientRow extends StatelessWidget {
-  final Map<String, String> patient;
+  final Map<String, dynamic> patient;
   final VoidCallback onView;
 
   const _PatientRow({required this.patient, required this.onView});
@@ -321,15 +358,22 @@ class _PatientRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final name = patient['name'] as String? ?? 'Unknown';
+    final diagnosis = patient['latestDiagnosis']?['label'] as String? ??
+        patient['latestDiagnosis']?['prediction'] as String? ??
+        'Pending';
+    final status = patient['status'] as String? ?? 'pending';
+    final date = patient['latestDate'] as String? ?? '';
+    final formattedDate = date.isNotEmpty ? date.split('T')[0] : '';
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Expanded(flex: 1, child: Text(patient['id']!, style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary))),
-          Expanded(flex: 2, child: Text(patient['name']!, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color))),
-          Expanded(flex: 1, child: Text(patient['age']!, style: GoogleFonts.dmSans(fontSize: 13, color: theme.textTheme.bodyMedium?.color))),
-          Expanded(flex: 2, child: Text(patient['diagnosis']!, style: GoogleFonts.dmSans(fontSize: 13, color: theme.textTheme.bodyMedium?.color))),
-          Expanded(flex: 2, child: DiagnosisBadge(label: patient['status']!, type: diagnosisToType(patient['status']!))),
+          Expanded(flex: 2, child: Text(name, style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500, color: theme.textTheme.bodyLarge?.color))),
+          Expanded(flex: 2, child: Text(diagnosis, style: GoogleFonts.dmSans(fontSize: 13, color: theme.textTheme.bodyMedium?.color))),
+          Expanded(flex: 2, child: Text(formattedDate, style: GoogleFonts.dmSans(fontSize: 13, color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary))),
+          Expanded(flex: 2, child: DiagnosisBadge(label: status, type: diagnosisToType(status))),
           Expanded(
             flex: 1,
             child: TextButton(

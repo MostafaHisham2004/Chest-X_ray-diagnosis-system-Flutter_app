@@ -5,6 +5,13 @@ class AppUser {
   final String email;
   final bool isAdmin;
   final String role;
+  final String? gender;
+  final String? dob;
+  final String? medicalHistory;
+  final String? specialization;
+  final String? medicalCertificate;
+  final bool? isVerified;
+  final String? verificationStatus;
 
   const AppUser({
     required this.id,
@@ -13,6 +20,13 @@ class AppUser {
     required this.email,
     required this.isAdmin,
     required this.role,
+    this.gender,
+    this.dob,
+    this.medicalHistory,
+    this.specialization,
+    this.medicalCertificate,
+    this.isVerified,
+    this.verificationStatus,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -40,6 +54,13 @@ class AppUser {
       email: json['email'] as String? ?? '',
       isAdmin: json['isAdmin'] == true || json['is_admin'] == true,
       role: json['role'] as String? ?? 'patient',
+      gender: json['gender'] as String?,
+      dob: json['dob'] as String?,
+      medicalHistory: json['medical_history'] as String?,
+      specialization: json['specialization'] as String?,
+      medicalCertificate: json['medical_certificate'] as String?,
+      isVerified: json['is_verified'] as bool?,
+      verificationStatus: json['verification_status'] as String?,
     );
   }
 

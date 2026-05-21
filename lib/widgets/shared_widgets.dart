@@ -14,6 +14,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isAdmin;
   final bool isAdminLoading;
   final String role;
+  final bool hideProfileMenu;
 
   const AppTopBar({
     super.key,
@@ -23,6 +24,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
     this.isAdmin = false,
     this.isAdminLoading = false,
     this.role = 'patient',
+    this.hideProfileMenu = false,
   });
 
   @override
@@ -92,16 +94,17 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'profile',
-                      child: ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.manage_accounts_outlined),
-                        title: Text('Profile settings'),
+                    if (!hideProfileMenu)
+                      const PopupMenuItem(
+                        value: 'profile',
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.manage_accounts_outlined),
+                          title: Text('Profile settings'),
+                        ),
                       ),
-                    ),
-                    if (isAdmin)
+                    if (!hideProfileMenu && isAdmin)
                       const PopupMenuItem(
                         value: 'admin',
                         child: ListTile(
@@ -111,7 +114,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                           title: Text('Admin console'),
                         ),
                       ),
-                    const PopupMenuDivider(),
+                    if (!hideProfileMenu) const PopupMenuDivider(),
                     const PopupMenuItem(
                       value: 'logout',
                       child: ListTile(
@@ -150,11 +153,13 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
 class SessionAppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onProfileTap;
+  final bool hideProfileMenu;
 
   const SessionAppTopBar({
     super.key,
     this.showBack = false,
     this.onProfileTap,
+    this.hideProfileMenu = false,
   });
 
   @override
@@ -168,6 +173,7 @@ class SessionAppTopBar extends StatelessWidget implements PreferredSizeWidget {
           isAdmin: auth.isAdmin,
           isAdminLoading: auth.isLoading,
           role: auth.role ?? auth.user?.role ?? 'patient',
+          hideProfileMenu: hideProfileMenu,
         );
       },
     );
@@ -254,20 +260,20 @@ class StatCard extends StatelessWidget {
               Expanded(
                 child: Text(title,
                     style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: isDark
                             ? AppTheme.darkTextSecondary
                             : AppTheme.textSecondary)),
               ),
-              Icon(icon, size: 16, color: iconColor ?? AppTheme.primary),
+              Icon(icon, size: 18, color: iconColor ?? AppTheme.primary),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(value,
               style: GoogleFonts.dmSans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
                   color: theme.textTheme.headlineSmall?.color)),
         ],
       ),
@@ -289,12 +295,12 @@ class DiagnosisBadge extends StatelessWidget {
     final colors = _getColors(isDark);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
           color: colors.$1, borderRadius: BorderRadius.circular(20)),
       child: Text(label,
           style: GoogleFonts.dmSans(
-              fontSize: 11, fontWeight: FontWeight.w600, color: colors.$2)),
+              fontSize: 12, fontWeight: FontWeight.w600, color: colors.$2)),
     );
   }
 
@@ -396,14 +402,14 @@ class SectionCard extends StatelessWidget {
                   if (title.isNotEmpty)
                     Text(title,
                         style: GoogleFonts.dmSans(
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: theme.textTheme.titleLarge?.color)),
                   if (description != null) ...[
                     if (title.isNotEmpty) const SizedBox(height: 4),
                     Text(description!,
                         style: GoogleFonts.dmSans(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: isDark
                                 ? AppTheme.darkTextSecondary
                                 : AppTheme.textSecondary)),
@@ -779,51 +785,56 @@ class UploadDropzone extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: AppTheme.primary.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: isDark
-                  ? AppTheme.darkBorderColor
-                  : AppTheme.primary.withOpacity(0.3),
-              width: 1.5),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16)),
-              child: const Icon(Icons.cloud_upload_outlined,
-                  size: 28, color: AppTheme.primary),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final height = constraints.maxWidth > 600 ? 260.0 : 180.0;
+          return Container(
+            height: height,
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: isDark
+                      ? AppTheme.darkBorderColor
+                      : AppTheme.primary.withOpacity(0.3),
+                  width: 1.5),
             ),
-            const SizedBox(height: 16),
-            Text('Drop X-ray image here',
-                style: GoogleFonts.dmSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: theme.textTheme.titleMedium?.color)),
-            const SizedBox(height: 4),
-            Text('or click to browse files',
-                style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: isDark
-                        ? AppTheme.darkTextSecondary
-                        : AppTheme.textSecondary)),
-            const SizedBox(height: 12),
-            Text('Supports: JPG, PNG, DICOM',
-                style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: isDark
-                        ? AppTheme.darkTextSecondary
-                        : AppTheme.textSecondary)),
-          ],
-        ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16)),
+                  child: const Icon(Icons.cloud_upload_outlined,
+                      size: 28, color: AppTheme.primary),
+                ),
+                const SizedBox(height: 16),
+                Text('Drop X-ray image here',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: theme.textTheme.titleMedium?.color)),
+                const SizedBox(height: 4),
+                Text('or click to browse files',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.textSecondary)),
+                const SizedBox(height: 12),
+                Text('Supports: JPG, PNG, DICOM',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : AppTheme.textSecondary)),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

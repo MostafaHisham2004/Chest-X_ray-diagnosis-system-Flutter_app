@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../shared/care_chat_screen.dart';
+import '../admin/admin_main.dart';
 import '../patient/patient_dashboard.dart';
 import 'patient_xrays.dart';
 import 'patient_upload.dart';
@@ -17,19 +20,23 @@ class PatientMainScreen extends StatefulWidget {
 class _PatientMainScreenState extends State<PatientMainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    PatientDashboard(),
-    PatientUploadScreen(),
-    PatientXraysScreen(),
-    CareChatScreen(),
-    PatientProfileScreen(),
+  List<Widget> _buildScreens(bool isAdmin) => [
+    const PatientDashboard(),
+    const PatientUploadScreen(),
+    const PatientXraysScreen(),
+    const CareChatScreen(),
+    const PatientProfileScreen(),
+    if (isAdmin) const AdminMainScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAdmin = context.watch<AuthProvider>().isAdmin;
+    final screens = _buildScreens(isAdmin);
+
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppTheme.darkCardBg : Colors.white,
@@ -87,6 +94,14 @@ class _PatientMainScreenState extends State<PatientMainScreen> {
                     index: 4,
                     current: _currentIndex,
                     onTap: (i) => setState(() => _currentIndex = i)),
+                if (isAdmin)
+                  _NavItem(
+                      icon: Icons.admin_panel_settings_outlined,
+                      activeIcon: Icons.admin_panel_settings,
+                      label: 'Admin',
+                      index: 5,
+                      current: _currentIndex,
+                      onTap: (i) => setState(() => _currentIndex = i)),
               ],
             ),
           ),

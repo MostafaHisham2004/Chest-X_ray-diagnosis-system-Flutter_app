@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../../models/app_user.dart';
+import '../../../services/api_client.dart';
+import '../../../services/xray_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/admin_badge.dart';
@@ -16,12 +20,46 @@ class PatientProfileScreen extends StatefulWidget {
 }
 
 class _PatientProfileScreenState extends State<PatientProfileScreen> {
+  final _service = XrayService();
+  Map<String, dynamic> _stats = {};
+  bool _isLoading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().refreshProfile();
+      _loadStats();
     });
+  }
+
+  Future<void> _loadStats() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final stats = await _service.fetchMyStats(token);
+      if (!mounted) return;
+      setState(() {
+        _stats = stats;
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -31,13 +69,26 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     final auth = context.watch<AuthProvider>();
     final profileUser = auth.user;
     final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
-    final displayName = profileUser?.name ?? 'Patient';
+    final txtBody = theme.textTheme.bodyLarge?.color;
+    final displayName = profileUser?.name ?? '';
     final displayEmail = profileUser?.email ?? '';
-    final initials = profileUser?.initials ?? 'PT';
+    final initials = profileUser?.initials ?? '?';
+    final gender = profileUser?.gender;
+    final dob = profileUser?.dob;
+    final medicalHistory = profileUser?.medicalHistory;
+    final xrayCount = (_stats['xrayCount'] as num?)?.toInt() ?? 0;
+    final latestDate = _stats['latestXray'] is Map<String, dynamic>
+        ? _stats['latestXray']['upload_date'] as String?
+        : null;
+
+    final missingFields = <String>[];
+    if (displayName.isEmpty) missingFields.add('Full Name');
+    if (gender == null || gender.isEmpty || gender == 'other') missingFields.add('Gender');
+    if (dob == null || dob.isEmpty) missingFields.add('Date of Birth');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const SessionAppTopBar(),
+      appBar: const SessionAppTopBar(hideProfileMenu: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -50,7 +101,53 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 style: GoogleFonts.dmSans(fontSize: 14, color: txtSec)),
             const SizedBox(height: 20),
 
-            // ── Profile Card ───────────────────────────────────────────────
+            if (missingFields.isNotEmpty)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, size: 20, color: AppTheme.warning),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Please complete your profile:',
+                              style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.warning)),
+                          const SizedBox(height: 4),
+                          ...missingFields.map((f) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text('• $f',
+                                style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.warning)),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            if (_error != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.error.withOpacity(0.25)),
+                ),
+                child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
+              ),
+
             SectionCard(
               title: '',
               padding: const EdgeInsets.all(24),
@@ -61,19 +158,19 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   child: Text(initials, style: GoogleFonts.dmSans(
                       fontSize: 28, fontWeight: FontWeight.w800, color: AppTheme.primary)),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 UserNameWithBadge(
-                  name: displayName,
+                  name: displayName.isNotEmpty ? displayName : 'Add your name',
                   isAdmin: auth.isAdmin,
                   isLoading: auth.isLoading,
                   nameStyle: GoogleFonts.dmSans(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: theme.textTheme.titleLarge?.color,
+                    color: displayName.isNotEmpty ? txtBody : AppTheme.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(displayEmail.toUpperCase(),
+                Text(displayEmail.isNotEmpty ? displayEmail.toUpperCase() : '',
                     style: GoogleFonts.dmSans(fontSize: 13, color: txtSec)),
                 const SizedBox(height: 12),
                 Row(
@@ -84,188 +181,121 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         fg: isDark ? AppTheme.darkTextPrimary : AppTheme.badgeBlueFg),
                     const SizedBox(width: 8),
                     AdminBadge(isAdmin: auth.isAdmin, isLoading: auth.isLoading),
-                    const SizedBox(width: 8),
-                    const _Badge(label: 'Active',
-                        bg: AppTheme.statGreenBg, fg: AppTheme.statGreenLabel),
                   ],
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: () {},
-                  child: const Text('Edit Profile'),
                 ),
               ]),
             ),
             const SizedBox(height: 16),
 
-            // ── Personal Information ───────────────────────────────────────
             SectionCard(
               title: 'Personal Information',
               description: 'Your personal and medical details',
               child: Column(children: [
-                const _InfoTile(icon: Icons.bloodtype_outlined, iconColor: Color(0xFFEF5350),
-                    label: 'Blood Type', value: 'O+'),
+                _InfoTile(
+                  icon: Icons.person_outline,
+                  iconColor: AppTheme.primary,
+                  label: 'Full Name',
+                  value: displayName.isNotEmpty ? displayName : 'Not set',
+                  missing: displayName.isEmpty,
+                ),
                 const SizedBox(height: 8),
-                const _InfoTile(icon: Icons.cake_outlined, iconColor: AppTheme.warning,
-                    label: 'Date of Birth', value: 'January 15, 1990'),
+                _InfoTile(
+                  icon: Icons.email_outlined,
+                  iconColor: AppTheme.primary,
+                  label: 'Email',
+                  value: displayEmail,
+                ),
                 const SizedBox(height: 8),
-                const _InfoTile(icon: Icons.location_on_outlined, iconColor: AppTheme.primary,
-                    label: 'Location', value: 'New York, USA'),
+                _InfoTile(
+                  icon: Icons.female_outlined,
+                  iconColor: Color(0xFFEF5350),
+                  label: 'Gender',
+                  value: (gender != null && gender != 'other') ? gender[0].toUpperCase() + gender.substring(1) : 'Not set',
+                  missing: gender == null || gender.isEmpty || gender == 'other',
+                ),
                 const SizedBox(height: 8),
-                const _InfoTile(icon: Icons.phone_outlined, iconColor: AppTheme.success,
-                    label: 'Phone', value: '+1 (555) 123-4567'),
+                _InfoTile(
+                  icon: Icons.cake_outlined,
+                  iconColor: AppTheme.warning,
+                  label: 'Date of Birth',
+                  value: dob ?? 'Not set',
+                  missing: dob == null || dob.isEmpty,
+                ),
+                if (medicalHistory != null && medicalHistory.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _InfoTile(
+                    icon: Icons.assignment_outlined,
+                    iconColor: AppTheme.success,
+                    label: 'Medical History',
+                    value: medicalHistory,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openEditProfile(context, profileUser, auth),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: Text('Edit Profile',
+                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                  ),
+                ),
               ]),
             ),
             const SizedBox(height: 16),
 
-            // ── Medical Summary ────────────────────────────────────────────
             SectionCard(
               title: 'Medical Summary',
               description: 'Overview of your medical data',
               padding: EdgeInsets.zero,
-              child: Column(children: [
-                _StatRow(label: 'Total X-rays', value: '12',
-                    divider: theme.dividerTheme.color!),
-                Divider(height: 1, color: theme.dividerTheme.color),
-                _StatRow(label: 'Reports Received', value: '8',
-                    divider: theme.dividerTheme.color!),
-                Divider(height: 1, color: theme.dividerTheme.color),
-                _StatRow(label: 'AI Consultations', value: '15',
-                    divider: theme.dividerTheme.color!),
-              ]),
+              child: _isLoading
+                  ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+                  : Column(children: [
+                      _StatRow(label: 'Total X-rays', value: '$xrayCount'),
+                      Divider(height: 1, color: theme.dividerTheme.color),
+                      _StatRow(label: 'Latest Upload', value: latestDate != null ? _formatDate(latestDate) : 'None'),
+                      Divider(height: 1, color: theme.dividerTheme.color),
+                      _StatRow(label: 'Reports', value: '${_stats['reportCount'] ?? 0}'),
+                    ]),
             ),
             const SizedBox(height: 16),
 
-            // ── Recent Activity ────────────────────────────────────────────
             SectionCard(
-              title: 'Recent Activity',
-              description: 'Your recent actions and updates',
-              child: Column(children: [
-                _ActivityItem(title: 'X-ray uploaded', subtitle: 'Chest X-ray',
-                    date: '2025-10-15', color: AppTheme.primary),
-                Divider(height: 16, color: theme.dividerTheme.color),
-                _ActivityItem(title: 'Report received', subtitle: 'AI Analysis Complete',
-                    date: '2025-10-10', color: AppTheme.success),
-                Divider(height: 16, color: theme.dividerTheme.color),
-                _ActivityItem(title: 'Appointment scheduled', subtitle: 'Follow-up consultation',
-                    date: '2025-10-05', color: AppTheme.warning),
-              ]),
+              title: 'Account',
+              description: 'Manage your account settings',
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _requestDoctorDialog(context),
+                  icon: const Icon(Icons.medical_services_outlined, size: 18),
+                  label: Text('Request to Become a Doctor',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
 
-            // ── Appearance ────────────────────────────────────────────────
             SectionCard(
               title: 'Appearance',
               description: 'Choose your preferred theme',
               child: const ThemeSwitcher(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-            // ── Settings ──────────────────────────────────────────────────
-            SectionCard(
-              title: 'Settings',
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-              child: Column(children: [
-                const SettingToggleRow(title: 'Email Notifications',
-                    subtitle: 'Receive notifications via email'),
-                Divider(height: 1, color: theme.dividerTheme.color),
-                const SettingToggleRow(title: 'Push Notifications',
-                    subtitle: 'Receive push notifications', initialValue: false),
-                Divider(height: 1, color: theme.dividerTheme.color),
-                const SettingToggleRow(title: 'X-ray Report Alerts',
-                    subtitle: 'Get notified when reports are ready'),
-                Divider(height: 1, color: theme.dividerTheme.color),
-                const SettingToggleRow(title: 'Appointment Reminders',
-                    subtitle: 'Get reminders for upcoming appointments'),
-              ]),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Security ──────────────────────────────────────────────────
-            SectionCard(
-              title: 'Security',
-              description: 'Manage your security preferences',
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const SettingToggleRow(title: 'Two-Factor Authentication',
-                    subtitle: 'Add an extra layer of security', initialValue: false),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-                Text('Update Password', style: GoogleFonts.dmSans(
-                    fontSize: 14, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color)),
-                const SizedBox(height: 12),
-                const TextField(obscureText: true, 
-                    decoration: InputDecoration(hintText: 'Enter current password',
-                        prefixIcon: Icon(Icons.lock_outline, size: 18))),
-                const SizedBox(height: 10),
-                const TextField(obscureText: true,
-                    decoration: InputDecoration(hintText: 'Enter new password',
-                        prefixIcon: Icon(Icons.lock_outline, size: 18))),
-                const SizedBox(height: 10),
-                const TextField(obscureText: true,
-                    decoration: InputDecoration(hintText: 'Confirm new password',
-                        prefixIcon: Icon(Icons.lock_outline, size: 18))),
-                const SizedBox(height: 16),
-                SizedBox(width: double.infinity, height: 44,
-                    child: ElevatedButton(onPressed: () {},
-                        child: const Text('Update Password'))),
-              ]),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Data & Privacy ────────────────────────────────────────────
-            SectionCard(
-              title: 'Data & Privacy',
-              description: 'Manage your data and privacy settings',
-              child: Column(children: [
-                _ActionButton(icon: Icons.download_outlined, label: 'Download My Data', onTap: () {}),
-                const SizedBox(height: 8),
-                _ActionButton(icon: Icons.policy_outlined, label: 'Privacy Policy', onTap: () {}),
-                const SizedBox(height: 8),
-                _ActionButton(icon: Icons.article_outlined, label: 'Terms of Service', onTap: () {}),
-              ]),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Help & Support ────────────────────────────────────────────
-            SectionCard(
-              title: 'Help & Support',
-              description: 'Get help and contact support',
-              child: Column(children: [
-                _ActionButton(icon: Icons.headset_mic_outlined, label: 'Contact Support', onTap: () {}),
-                const SizedBox(height: 8),
-                _ActionButton(icon: Icons.help_outline, label: 'FAQ', onTap: () {}),
-                const SizedBox(height: 12),
-                Center(child: Text('App Version 1.0.0',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: txtSec))),
-              ]),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Save / Cancel ─────────────────────────────────────────────
-            Row(children: [
-              Expanded(child: SizedBox(height: 48,
-                  child: ElevatedButton(onPressed: () {},
-                      child: const Text('Save Changes')))),
-              const SizedBox(width: 12),
-              Expanded(child: SizedBox(height: 48,
-                  child: OutlinedButton(onPressed: () {},
-                      child: const Text('Cancel')))),
-            ]),
-            const SizedBox(height: 12),
-
-            // ── Sign Out ──────────────────────────────────────────────────
             SizedBox(
-              width: double.infinity, height: 48,
+              width: double.infinity, height: 50,
               child: OutlinedButton.icon(
                 onPressed: () {
                   context.read<AuthProvider>().logout();
-                  Navigator.of(context).pushReplacement(
+                  Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AuthScreen()),
+                    (_) => false,
                   );
                 },
                 icon: const Icon(Icons.logout, size: 18, color: Colors.red),
                 label: Text('Sign Out', style: GoogleFonts.dmSans(
-                    color: Colors.red, fontWeight: FontWeight.w600)),
+                    color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15)),
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
               ),
             ),
@@ -275,46 +305,131 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       ),
     );
   }
+
+  Future<void> _requestDoctorDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final auth = context.read<AuthProvider>();
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (_) => const _RequestDoctorDialog(),
+    );
+    if (result == null) return;
+    final ok = await auth.requestDoctor(
+      name: result['name'] ?? '',
+      specialization: result['specialization'] ?? '',
+    );
+    if (!mounted) return;
+    if (ok) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Doctor request submitted! Pending admin approval.', style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage ?? 'Failed to submit request', style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openEditProfile(BuildContext context, AppUser? profileUser, AuthProvider auth) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (_) => _EditProfileDialog(user: profileUser),
+    );
+    if (result == null) return;
+    final ok = await auth.updateProfile(
+      name: result['name'],
+      gender: result['gender'],
+      dob: result['dob'],
+      medicalHistory: result['medicalHistory'],
+    );
+    if (!mounted) return;
+    if (ok) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Profile updated', style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage ?? 'Failed to update profile', style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  String _formatDate(String dateStr) {
+    final dt = DateTime.tryParse(dateStr);
+    if (dt == null) return dateStr;
+    return DateFormat.yMMMd().format(dt.toLocal());
+  }
 }
 
 class _InfoTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label, value;
+  final bool missing;
 
-  const _InfoTile({required this.icon, required this.iconColor,
-    required this.label, required this.value});
+  const _InfoTile({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    this.missing = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest, 
-          borderRadius: BorderRadius.circular(12)
+          color: missing
+              ? AppTheme.warning.withOpacity(0.08)
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: missing ? Border.all(color: AppTheme.warning.withOpacity(0.25)) : null,
       ),
       child: Row(children: [
         Container(
-          width: 40, height: 40,
+          width: 42, height: 42,
           decoration: BoxDecoration(
               color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, size: 20, color: iconColor),
         ),
         const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: GoogleFonts.dmSans(
-              fontSize: 12, 
-              color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
-          )),
-          Text(value, style: GoogleFonts.dmSans(
-              fontSize: 15, 
-              fontWeight: FontWeight.w600, 
-              color: theme.textTheme.bodyLarge?.color
-          )),
-        ]),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
+            )),
+            const SizedBox(height: 2),
+            Text(value, style: GoogleFonts.dmSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: missing ? AppTheme.warning : theme.textTheme.bodyLarge?.color
+            )),
+          ]),
+        ),
+        if (missing)
+          const Icon(Icons.warning_amber_rounded, size: 18, color: AppTheme.warning),
       ]),
     );
   }
@@ -322,8 +437,7 @@ class _InfoTile extends StatelessWidget {
 
 class _StatRow extends StatelessWidget {
   final String label, value;
-  final Color divider;
-  const _StatRow({required this.label, required this.value, required this.divider});
+  const _StatRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -332,64 +446,237 @@ class _StatRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label, style: GoogleFonts.dmSans(
-            fontSize: 14, 
+            fontSize: 14,
             color: theme.brightness == Brightness.dark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
         )),
         Text(value, style: GoogleFonts.dmSans(
-            fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+            fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.primary)),
       ]),
     );
   }
 }
 
-class _ActivityItem extends StatelessWidget {
-  final String title, subtitle, date;
-  final Color color;
-  const _ActivityItem({required this.title, required this.subtitle, required this.date,
-    required this.color});
+class _EditProfileDialog extends StatefulWidget {
+  final AppUser? user;
+
+  const _EditProfileDialog({this.user});
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _nameCtrl =
+      TextEditingController(text: widget.user?.name ?? '');
+  late final TextEditingController _medicalHistoryCtrl =
+      TextEditingController(text: widget.user?.medicalHistory ?? '');
+  late String _gender = widget.user?.gender ?? 'other';
+  late TextEditingController _dobCtrl =
+      TextEditingController(text: widget.user?.dob ?? '');
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _dobCtrl.dispose();
+    _medicalHistoryCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _tryParseDob() ?? DateTime(1990, 1, 1),
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+    if (picked != null) {
+      _dobCtrl.text = picked.toIso8601String().split('T').first;
+      setState(() {});
+    }
+  }
+
+  DateTime? _tryParseDob() {
+    final t = _dobCtrl.text.trim();
+    if (t.isEmpty) return null;
+    return DateTime.tryParse(t);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
-
-    return Row(children: [
-      Container(width: 8, height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 12),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: GoogleFonts.dmSans(
-            fontSize: 14, 
-            fontWeight: FontWeight.w600, 
-            color: theme.textTheme.bodyLarge?.color
-        )),
-        Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: txtSec)),
-      ])),
-      Text(date, style: GoogleFonts.dmSans(fontSize: 12, color: txtSec)),
-    ]);
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Edit Profile',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _gender,
+                decoration: const InputDecoration(
+                  labelText: 'Gender',
+                  prefixIcon: Icon(Icons.female_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'male', child: Text('Male')),
+                  DropdownMenuItem(value: 'female', child: Text('Female')),
+                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                ],
+                onChanged: (v) => setState(() => _gender = v ?? 'other'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _dobCtrl,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Date of birth',
+                  prefixIcon: Icon(Icons.cake_outlined),
+                  suffixIcon: Icon(Icons.calendar_today, size: 18),
+                ),
+                onTap: _pickDate,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _medicalHistoryCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Medical history',
+                  prefixIcon: Icon(Icons.assignment_outlined),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, {
+                      'name': _nameCtrl.text.trim(),
+                      'gender': _gender,
+                      'dob': _dobCtrl.text.trim(),
+                      'medicalHistory': _medicalHistoryCtrl.text.trim(),
+                    });
+                  },
+                  child: const Text('Save Changes'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _ActionButton({required this.icon, required this.label, required this.onTap});
+class _RequestDoctorDialog extends StatefulWidget {
+  const _RequestDoctorDialog();
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: SizedBox(
-      width: double.infinity, height: 44,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 16),
-        label: Text(label, style: GoogleFonts.dmSans(fontWeight: FontWeight.w500)),
-        style: OutlinedButton.styleFrom(alignment: Alignment.centerLeft),
+  State<_RequestDoctorDialog> createState() => _RequestDoctorDialogState();
+}
+
+class _RequestDoctorDialogState extends State<_RequestDoctorDialog> {
+  final _nameCtrl = TextEditingController();
+  final _specializationCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _specializationCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Request to Become a Doctor',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('Fill in your details to request admin approval.',
+                  style: GoogleFonts.dmSans(fontSize: 13, color: AppTheme.textSecondary)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _specializationCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Specialization',
+                  prefixIcon: Icon(Icons.medical_services_outlined),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_nameCtrl.text.trim().isEmpty || _specializationCtrl.text.trim().isEmpty) return;
+                    Navigator.pop(context, {
+                      'name': _nameCtrl.text.trim(),
+                      'specialization': _specializationCtrl.text.trim(),
+                    });
+                  },
+                  child: const Text('Submit Request'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _Badge extends StatelessWidget {

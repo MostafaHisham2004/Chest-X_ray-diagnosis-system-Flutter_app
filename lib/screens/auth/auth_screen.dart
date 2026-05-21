@@ -21,8 +21,10 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _confirmPassController = TextEditingController();
+  final _specializationCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  String _signupRole = 'patient';
 
   @override
   void dispose() {
@@ -30,6 +32,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     _nameController.dispose();
     _confirmPassController.dispose();
+    _specializationCtrl.dispose();
     super.dispose();
   }
 
@@ -58,12 +61,19 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
+    if (!_isSignIn && _signupRole == 'doctor' && _specializationCtrl.text.trim().isEmpty) {
+      _showMessage('Please enter your specialization.');
+      return;
+    }
+
     final ok = _isSignIn
         ? await auth.login(email: email, password: password)
         : await auth.signup(
             name: _nameController.text.trim(),
             email: email,
             password: password,
+            role: _signupRole,
+            specialization: _signupRole == 'doctor' ? _specializationCtrl.text.trim() : null,
           );
 
     if (!mounted) return;
@@ -263,9 +273,32 @@ class _AuthScreenState extends State<AuthScreen> {
                                     () => _obscureConfirm = !_obscureConfirm),
                                 theme: theme,
                               ),
+                              const SizedBox(height: 18),
+                              DropdownButtonFormField<String>(
+                                value: _signupRole,
+                                decoration: const InputDecoration(
+                                  labelText: 'Sign up as',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'patient', child: Text('Patient')),
+                                  DropdownMenuItem(value: 'doctor', child: Text('Doctor')),
+                                ],
+                                onChanged: (v) => setState(() => _signupRole = v ?? 'patient'),
+                              ),
+                              if (_signupRole == 'doctor') ...[
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _specializationCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Specialization',
+                                    prefixIcon: Icon(Icons.medical_services_outlined),
+                                  ),
+                                ),
+                              ],
                             ],
 
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 24),
 
                             Consumer<AuthProvider>(
                               builder: (context, auth, _) {

@@ -1,5 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_client.dart';
+import '../../../services/xray_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/shared_widgets.dart';
 
@@ -11,17 +19,97 @@ class DoctorUploadScreen extends StatefulWidget {
 }
 
 class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
-  bool _fileSelected = false;
-  bool _isAnalyzing = false;
-  String? _selectedPatient;
+  final _service = XrayService();
+  final _picker = ImagePicker();
+  File? _selectedFile;
+  String? _fileName;
+  bool _isUploading = false;
+  int? _selectedPatientId;
+  List<Map<String, dynamic>> _patients = [];
+  bool _loadingPatients = true;
 
-  final _patients = ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emily Davis', 'Robert Wilson'];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPatients());
+  }
 
-  void _simulateAnalysis() {
-    setState(() => _isAnalyzing = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _isAnalyzing = false);
+  Future<void> _loadPatients() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      final patients = await _service.fetchDoctorPatients(token);
+      if (!mounted) return;
+      setState(() {
+        _patients = patients;
+        _loadingPatients = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingPatients = false);
+    }
+  }
+
+  Future<void> _pickFile() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2048,
+      maxHeight: 2048,
+    );
+    if (picked == null) return;
+    setState(() {
+      _selectedFile = File(picked.path);
+      _fileName = picked.name;
     });
+  }
+
+  Future<void> _submit() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null || _selectedFile == null) return;
+
+    setState(() => _isUploading = true);
+    try {
+      await _service.uploadXray(
+        token: token,
+        file: _selectedFile!,
+        patientId: _selectedPatientId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isUploading = false;
+        _selectedFile = null;
+        _fileName = null;
+        _selectedPatientId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('X-ray uploaded. AI analysis will begin shortly.',
+              style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message, style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed.', style: GoogleFonts.dmSans()),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -29,10 +117,37 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+    final auth = context.watch<AuthProvider>();
+    final isPending = auth.user?.verificationStatus == null || auth.user?.verificationStatus == 'pending';
+
+    if (isPending) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: const SessionAppTopBar(hideProfileMenu: true),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 48, color: AppTheme.warning),
+                const SizedBox(height: 16),
+                Text('Account Pending Approval',
+                    style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.warning)),
+                const SizedBox(height: 8),
+                Text('Your account is awaiting admin verification. You will be able to upload X-rays once approved.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(fontSize: 14, color: txtSec)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const SessionAppTopBar(),
+      appBar: const SessionAppTopBar(hideProfileMenu: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -56,13 +171,32 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  if (!_fileSelected) ...[
-                    UploadDropzone(onTap: () => setState(() => _fileSelected = true)),
+                  if (_selectedFile == null) ...[
+                    UploadDropzone(onTap: _pickFile),
                   ] else ...[
-                    const _SelectedFilePreview(),
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A2E),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Icon(Icons.image, size: 64, color: Colors.white30),
+                          Positioned(
+                            top: 12, right: 12,
+                            child: DiagnosisBadge(label: _fileName ?? 'xray.jpg', type: BadgeType.info),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     TextButton.icon(
-                      onPressed: () => setState(() => _fileSelected = false),
+                      onPressed: () => setState(() {
+                        _selectedFile = null;
+                        _fileName = null;
+                      }),
                       icon: const Icon(Icons.close, size: 16),
                       label: const Text('Remove'),
                     ),
@@ -85,8 +219,16 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedPatient,
+                          child: _loadingPatients
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 20, height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              : DropdownButton<int>(
+                            value: _selectedPatientId,
                             isExpanded: true,
                             dropdownColor: theme.cardTheme.color,
                             hint: Text('Select a patient', style: GoogleFonts.dmSans(
@@ -97,8 +239,11 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                               fontSize: 14, 
                               color: theme.textTheme.bodyLarge?.color
                             ),
-                            items: _patients.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                            onChanged: (v) => setState(() => _selectedPatient = v),
+                            items: _patients.map((p) => DropdownMenuItem(
+                              value: p['id'] as int?,
+                              child: Text(p['name'] as String? ?? 'Unknown'),
+                            )).toList(),
+                            onChanged: (v) => setState(() => _selectedPatientId = v),
                           ),
                         ),
                       ),
@@ -109,18 +254,14 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton.icon(
-                      onPressed: _fileSelected ? _simulateAnalysis : null,
-                      icon: _isAnalyzing
+                      onPressed: (_selectedFile != null && _selectedPatientId != null) ? _submit : null,
+                      icon: _isUploading
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.upload, size: 18),
-                      label: Text(_isAnalyzing ? 'Analyzing...' : 'Upload X-ray',
+                      label: Text(_isUploading ? 'Uploading...' : 'Upload X-ray',
                           style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600)),
                     ),
                   ),
-                  if (_isAnalyzing) ...[
-                    const SizedBox(height: 16),
-                    const _AnalysisProgress(),
-                  ],
                 ],
               ),
             ),
@@ -132,64 +273,3 @@ class _DoctorUploadScreenState extends State<DoctorUploadScreen> {
   }
 }
 
-class _SelectedFilePreview extends StatelessWidget {
-  const _SelectedFilePreview();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(Icons.image, size: 48, color: Colors.white30),
-          Positioned(
-            top: 12, right: 12,
-            child: DiagnosisBadge(label: 'chest_xray.jpg', type: BadgeType.info),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnalysisProgress extends StatelessWidget {
-  const _AnalysisProgress();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 20, height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('AI Analysis in Progress', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600)),
-              Text('This may take a moment...', style: GoogleFonts.dmSans(
-                fontSize: 11, 
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
-              )),
-            ],
-          )),
-        ],
-      ),
-    );
-  }
-}

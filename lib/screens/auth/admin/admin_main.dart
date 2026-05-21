@@ -80,9 +80,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
 
-    final payload = await showModalBottomSheet<Map<String, dynamic>>(
+    final payload = await showDialog<Map<String, dynamic>>(
       context: context,
-      isScrollControlled: true,
       builder: (_) => _UserFormSheet(user: user),
     );
     if (payload == null) return;
@@ -151,20 +150,20 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
     if (!auth.isAdmin) {
       return Scaffold(
-        appBar: const SessionAppTopBar(),
-        body: Center(
-          child: Text(
-            'Admin access required',
-            style:
-                GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
+        appBar: const SessionAppTopBar(hideProfileMenu: true),
+      body: Center(
+        child: Text(
+          'Admin access required',
+          style:
+              GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700),
         ),
+      ),
       );
     }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const SessionAppTopBar(),
+      appBar: const SessionAppTopBar(hideProfileMenu: true),
       body: RefreshIndicator(
         onRefresh: _load,
         child: SingleChildScrollView(
@@ -199,10 +198,13 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                           ],
                         ),
                       ),
-                      ElevatedButton.icon(
-                        onPressed: () => _openUserSheet(),
-                        icon: const Icon(Icons.person_add_alt_1, size: 18),
-                        label: const Text('Add User'),
+                      SizedBox(
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openUserSheet(),
+                          icon: const Icon(Icons.person_add_alt_1, size: 18),
+                          label: const Text('Add User'),
+                        ),
                       ),
                     ],
                   ),
@@ -210,7 +212,10 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _ErrorBanner(message: _error!),
+                      child: _ErrorBanner(
+                        message: _error!,
+                        onDismiss: () => setState(() => _error = null),
+                      ),
                     ),
                   _StatsGrid(activity: _activity),
                   const SizedBox(height: 16),
@@ -284,7 +289,7 @@ class _StatsGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: constraints.maxWidth > 760 ? 2.25 : 1.55,
+          childAspectRatio: constraints.maxWidth > 760 ? 2.5 : 1.7,
           children: [
             StatCard(
               title: 'Total Users',
@@ -433,11 +438,11 @@ class _UserRow extends StatelessWidget {
     };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 20,
+            radius: 22,
             backgroundColor: roleColor.withOpacity(0.14),
             child: Text(
               user.initials,
@@ -649,7 +654,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
     if (_role != 'admin' && _nameCtrl.text.trim().isEmpty) return;
 
     final payload = <String, dynamic>{
-      if (isCreate) 'role': _role,
+      'role': _role,
       if (_nameCtrl.text.trim().isNotEmpty) 'name': _nameCtrl.text.trim(),
       'email': _emailCtrl.text.trim(),
       if (_passwordCtrl.text.isNotEmpty) 'password': _passwordCtrl.text,
@@ -675,124 +680,134 @@ class _UserFormSheetState extends State<_UserFormSheet> {
   @override
   Widget build(BuildContext context) {
     final isCreate = widget.user == null;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isCreate ? 'Add User' : 'Edit User',
-              style:
-                  GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _role,
-              decoration: const InputDecoration(labelText: 'Role'),
-              items: const [
-                DropdownMenuItem(value: 'patient', child: Text('Patient')),
-                DropdownMenuItem(value: 'doctor', child: Text('Doctor')),
-                DropdownMenuItem(value: 'admin', child: Text('Admin')),
-              ],
-              onChanged: isCreate
-                  ? (value) => setState(() => _role = value ?? _role)
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Full name',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _emailCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordCtrl,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: isCreate ? 'Password' : 'New password',
-                prefixIcon: const Icon(Icons.lock_outline),
-              ),
-            ),
-            if (_role == 'patient') ...[
-              const SizedBox(height: 12),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _genderCtrl,
-                      decoration: const InputDecoration(labelText: 'Gender'),
+                    child: Text(
+                      isCreate ? 'Add User' : 'Edit User',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 20, fontWeight: FontWeight.w800),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _dobCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Date of birth'),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-            ],
-            if (_role == 'doctor') ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _specializationCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Specialization',
-                  prefixIcon: Icon(Icons.medical_services_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _certificateCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Medical certificate',
-                  prefixIcon: Icon(Icons.badge_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _verification,
-                decoration: const InputDecoration(labelText: 'Verification'),
+                value: _role,
+                decoration: const InputDecoration(labelText: 'Role'),
                 items: const [
-                  DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                  DropdownMenuItem(value: 'approved', child: Text('Approved')),
-                  DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                  DropdownMenuItem(value: 'patient', child: Text('Patient')),
+                  DropdownMenuItem(value: 'doctor', child: Text('Doctor')),
+                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
                 ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _verification = value);
-                },
+                onChanged: (value) => setState(() => _role = value ?? _role),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: isCreate ? 'Password' : 'New password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                ),
+              ),
+              if (_role == 'patient') ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _genderCtrl,
+                        decoration: const InputDecoration(labelText: 'Gender'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _dobCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Date of birth'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (_role == 'doctor') ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _specializationCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Specialization',
+                    prefixIcon: Icon(Icons.medical_services_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _certificateCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Medical certificate',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _verification,
+                  decoration: const InputDecoration(labelText: 'Verification'),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(
+                        value: 'approved', child: Text('Approved')),
+                    DropdownMenuItem(
+                        value: 'rejected', child: Text('Rejected')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _verification = value);
+                  },
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _submit,
+                  child: Text(isCreate ? 'Create User' : 'Save Changes'),
+                ),
               ),
             ],
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _submit,
-                child: Text(isCreate ? 'Create User' : 'Save Changes'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -801,8 +816,9 @@ class _UserFormSheetState extends State<_UserFormSheet> {
 
 class _ErrorBanner extends StatelessWidget {
   final String message;
+  final VoidCallback? onDismiss;
 
-  const _ErrorBanner({required this.message});
+  const _ErrorBanner({required this.message, this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -814,12 +830,23 @@ class _ErrorBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.error.withOpacity(0.25)),
       ),
-      child: Text(
-        message,
-        style: GoogleFonts.dmSans(
-          color: AppTheme.error,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.dmSans(
+                color: AppTheme.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (onDismiss != null)
+            GestureDetector(
+              onTap: onDismiss,
+              child: const Icon(Icons.close, size: 18, color: AppTheme.error),
+            ),
+        ],
       ),
     );
   }

@@ -36,21 +36,58 @@ class AuthService {
     required String gender,
     required String dob,
     String? medicalHistory,
+    String role = 'patient',
+    String? specialization,
   }) async {
-    final body = await _api.post('/auth/signup', body: {
+    final body = <String, dynamic>{
       'name': name,
       'email': email,
       'password': password,
       'gender': gender,
       'dob': dob,
+      'role': role,
       if (medicalHistory != null) 'medical_history': medicalHistory,
-    });
-    return _sessionFromBody(body);
+      if (specialization != null) 'specialization': specialization,
+    };
+    final result = await _api.post('/auth/signup', body: body);
+    return _sessionFromBody(result);
   }
 
   Future<AppUser> fetchMe(String token) async {
     final body = await _api.get('/auth/me', token: token);
     final data = body['data'] as Map<String, dynamic>? ?? {};
+    final userJson = data['user'] as Map<String, dynamic>? ?? {};
+    final role = data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
+    return AppUser.fromJson({...userJson, 'role': role});
+  }
+
+  Future<void> requestDoctor({
+    required String token,
+    required String name,
+    required String specialization,
+  }) async {
+    await _api.post('/auth/request-doctor', token: token, body: {
+      'name': name,
+      'specialization': specialization,
+    });
+  }
+
+  Future<AppUser> updateProfile({
+    required String token,
+    String? name,
+    String? gender,
+    String? dob,
+    String? medicalHistory,
+    String? specialization,
+  }) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (gender != null) body['gender'] = gender;
+    if (dob != null) body['dob'] = dob;
+    if (medicalHistory != null) body['medical_history'] = medicalHistory;
+    if (specialization != null) body['specialization'] = specialization;
+    final response = await _api.patch('/auth/me', body: body, token: token);
+    final data = response['data'] as Map<String, dynamic>? ?? {};
     final userJson = data['user'] as Map<String, dynamic>? ?? {};
     final role = data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
     return AppUser.fromJson({...userJson, 'role': role});

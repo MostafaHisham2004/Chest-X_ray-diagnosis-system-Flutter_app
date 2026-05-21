@@ -35,6 +35,8 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     String gender = 'other',
     String? dob,
+    String role = 'patient',
+    String? specialization,
   }) async {
     return _run(() => _authService.signup(
           name: name,
@@ -42,7 +44,53 @@ class AuthProvider extends ChangeNotifier {
           password: password,
           gender: gender,
           dob: dob ?? DateTime.now().toIso8601String().split('T').first,
+          role: role,
+          specialization: specialization,
         ));
+  }
+
+  Future<bool> requestDoctor({
+    required String name,
+    required String specialization,
+  }) async {
+    if (token == null) return false;
+    try {
+      await _authService.requestDoctor(token: token!, name: name, specialization: specialization);
+      await refreshProfile();
+      return true;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateProfile({
+    String? name,
+    String? gender,
+    String? dob,
+    String? medicalHistory,
+    String? specialization,
+  }) async {
+    if (token == null) return false;
+    try {
+      final updated = await _authService.updateProfile(
+        token: token!,
+        name: name,
+        gender: gender,
+        dob: dob,
+        medicalHistory: medicalHistory,
+        specialization: specialization,
+      );
+      user = updated;
+      role = updated.role;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> refreshProfile() async {
