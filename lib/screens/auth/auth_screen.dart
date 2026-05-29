@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
-import 'admin/admin_main.dart';
 import 'doctor/doctor_main.dart';
 import 'patient/patient_main.dart';
 
@@ -21,10 +21,25 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _confirmPassController = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _specializationCtrl = TextEditingController();
+  final _dobController = TextEditingController();
+  final _licenseCtrl = TextEditingController();
+  final _licensingBodyCtrl = TextEditingController();
+  final _professionalAddressCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _countryCtrl = TextEditingController();
+  final _emergencyNameCtrl = TextEditingController();
+  final _emergencyPhoneCtrl = TextEditingController();
+  final _clinicCtrl = TextEditingController();
+  final _experienceCtrl = TextEditingController();
+  final _bioCtrl = TextEditingController();
+  final _doctorCodeCtrl = TextEditingController();
+  String _gender = 'other';
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   String _signupRole = 'patient';
+  bool _hasDoctor = false;
 
   @override
   void dispose() {
@@ -32,7 +47,20 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     _nameController.dispose();
     _confirmPassController.dispose();
+    _phoneCtrl.dispose();
     _specializationCtrl.dispose();
+    _dobController.dispose();
+    _licenseCtrl.dispose();
+    _licensingBodyCtrl.dispose();
+    _professionalAddressCtrl.dispose();
+    _cityCtrl.dispose();
+    _countryCtrl.dispose();
+    _emergencyNameCtrl.dispose();
+    _emergencyPhoneCtrl.dispose();
+    _clinicCtrl.dispose();
+    _experienceCtrl.dispose();
+    _bioCtrl.dispose();
+    _doctorCodeCtrl.dispose();
     super.dispose();
   }
 
@@ -51,6 +79,11 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
+    if (!_isSignIn && _phoneCtrl.text.trim().isEmpty) {
+      _showMessage('Please enter your phone number.');
+      return;
+    }
+
     if (!_isSignIn && password.length < 8) {
       _showMessage('Password must be at least 8 characters.');
       return;
@@ -61,10 +94,43 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
-    if (!_isSignIn && _signupRole == 'doctor' && _specializationCtrl.text.trim().isEmpty) {
-      _showMessage('Please enter your specialization.');
-      return;
+    if (!_isSignIn) {
+      if (_dobController.text.trim().isEmpty) {
+        _showMessage('Please enter your date of birth.');
+        return;
+      }
+      if (_signupRole == 'doctor') {
+        if (_specializationCtrl.text.trim().isEmpty ||
+            _licenseCtrl.text.trim().isEmpty ||
+            _licensingBodyCtrl.text.trim().isEmpty ||
+            _clinicCtrl.text.trim().isEmpty ||
+            _professionalAddressCtrl.text.trim().isEmpty) {
+          _showMessage('Please complete your doctor verification details.');
+          return;
+        }
+      }
     }
+
+    final patientInfo = [
+      'Phone: ${_phoneCtrl.text.trim()}',
+      'City: ${_cityCtrl.text.trim().isEmpty ? 'Not provided' : _cityCtrl.text.trim()}',
+      'Country: ${_countryCtrl.text.trim().isEmpty ? 'Not provided' : _countryCtrl.text.trim()}',
+      'Emergency contact: ${_emergencyNameCtrl.text.trim().isEmpty ? 'Not provided' : _emergencyNameCtrl.text.trim()}',
+      'Emergency phone: ${_emergencyPhoneCtrl.text.trim().isEmpty ? 'Not provided' : _emergencyPhoneCtrl.text.trim()}',
+    ].join('\n');
+
+    final doctorVerification = [
+      'Phone: ${_phoneCtrl.text.trim()}',
+      'Specialty: ${_specializationCtrl.text.trim()}',
+      'License: ${_licenseCtrl.text.trim()}',
+      'Authority: ${_licensingBodyCtrl.text.trim()}',
+      'Clinic/Hospital: ${_clinicCtrl.text.trim()}',
+      'Experience: ${_experienceCtrl.text.trim().isEmpty ? 'Not provided' : _experienceCtrl.text.trim()} years',
+      'Professional address: ${_professionalAddressCtrl.text.trim()}',
+      'City: ${_cityCtrl.text.trim().isEmpty ? 'Not provided' : _cityCtrl.text.trim()}',
+      'Country: ${_countryCtrl.text.trim().isEmpty ? 'Not provided' : _countryCtrl.text.trim()}',
+      'Bio: ${_bioCtrl.text.trim().isEmpty ? 'Not provided' : _bioCtrl.text.trim()}',
+    ].join('\n');
 
     final ok = _isSignIn
         ? await auth.login(email: email, password: password)
@@ -72,8 +138,16 @@ class _AuthScreenState extends State<AuthScreen> {
             name: _nameController.text.trim(),
             email: email,
             password: password,
+            phone: _phoneCtrl.text.trim(),
             role: _signupRole,
-            specialization: _signupRole == 'doctor' ? _specializationCtrl.text.trim() : null,
+            gender: _gender,
+            dob: _dobController.text.trim(),
+            medicalHistory: _signupRole == 'patient' ? patientInfo : null,
+            specialization: _signupRole == 'doctor'
+                ? _specializationCtrl.text.trim()
+                : null,
+            medicalCertificate:
+                _signupRole == 'doctor' ? doctorVerification : null,
           );
 
     if (!mounted) return;
@@ -83,11 +157,26 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
-    final destination = auth.role == 'admin'
-        ? const AdminMainScreen()
-        : auth.role == 'doctor'
-            ? const DoctorMainScreen()
-            : const PatientMainScreen();
+    if (!_isSignIn &&
+        _signupRole == 'patient' &&
+        _hasDoctor &&
+        _doctorCodeCtrl.text.trim().isNotEmpty &&
+        auth.token != null) {
+      try {
+        await ChatService().verifyConnection(
+          token: auth.token!,
+          code: _doctorCodeCtrl.text.trim(),
+        );
+        _showMessage('Doctor connected successfully.');
+      } catch (_) {
+        _showMessage(
+            'Account created, but the doctor code was invalid or expired.');
+      }
+    }
+
+    final destination = auth.role == 'doctor'
+        ? const DoctorMainScreen()
+        : const PatientMainScreen();
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => destination),
@@ -232,11 +321,55 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 28),
 
                             if (!_isSignIn) ...[
+                              Text(
+                                'Choose account type',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.textTheme.bodyLarge?.color,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _RoleChoiceCard(
+                                      title: 'Patient',
+                                      subtitle: 'Upload and review X-rays',
+                                      icon: Icons.personal_injury_outlined,
+                                      selected: _signupRole == 'patient',
+                                      onTap: () => setState(
+                                          () => _signupRole = 'patient'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _RoleChoiceCard(
+                                      title: 'Doctor',
+                                      subtitle: 'Requires license approval',
+                                      icon: Icons.medical_services_outlined,
+                                      selected: _signupRole == 'doctor',
+                                      onTap: () => setState(
+                                          () => _signupRole = 'doctor'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
                               _FormField(
                                 label: 'Full Name',
                                 controller: _nameController,
                                 hint: 'John Doe',
                                 icon: Icons.person_outline,
+                                theme: theme,
+                              ),
+                              const SizedBox(height: 18),
+                              _FormField(
+                                label: 'Phone Number',
+                                controller: _phoneCtrl,
+                                hint: '+20 100 000 0000',
+                                icon: Icons.phone_outlined,
+                                keyboardType: TextInputType.phone,
                                 theme: theme,
                               ),
                               const SizedBox(height: 18),
@@ -274,25 +407,192 @@ class _AuthScreenState extends State<AuthScreen> {
                                 theme: theme,
                               ),
                               const SizedBox(height: 18),
-                              DropdownButtonFormField<String>(
-                                value: _signupRole,
-                                decoration: const InputDecoration(
-                                  labelText: 'Sign up as',
-                                  prefixIcon: Icon(Icons.person_outline),
-                                ),
-                                items: const [
-                                  DropdownMenuItem(value: 'patient', child: Text('Patient')),
-                                  DropdownMenuItem(value: 'doctor', child: Text('Doctor')),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      value: _gender,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Gender',
+                                        prefixIcon: Icon(Icons.wc_outlined),
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                            value: 'male', child: Text('Male')),
+                                        DropdownMenuItem(
+                                            value: 'female',
+                                            child: Text('Female')),
+                                        DropdownMenuItem(
+                                            value: 'other',
+                                            child: Text('Other')),
+                                      ],
+                                      onChanged: (v) => setState(
+                                          () => _gender = v ?? 'other'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _FormField(
+                                      label: 'Date of Birth',
+                                      controller: _dobController,
+                                      hint: 'YYYY-MM-DD',
+                                      icon: Icons.cake_outlined,
+                                      keyboardType: TextInputType.datetime,
+                                      theme: theme,
+                                    ),
+                                  ),
                                 ],
-                                onChanged: (v) => setState(() => _signupRole = v ?? 'patient'),
                               ),
+                              const SizedBox(height: 18),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _FormField(
+                                      label: 'City',
+                                      controller: _cityCtrl,
+                                      hint: 'Cairo',
+                                      icon: Icons.location_city_outlined,
+                                      theme: theme,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _FormField(
+                                      label: 'Country',
+                                      controller: _countryCtrl,
+                                      hint: 'Egypt',
+                                      icon: Icons.public_outlined,
+                                      theme: theme,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_signupRole == 'patient') ...[
+                                const SizedBox(height: 18),
+                                SwitchListTile(
+                                  value: _hasDoctor,
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    'Do you have a doctor?',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Enter the code sent by your doctor.',
+                                    style: GoogleFonts.dmSans(fontSize: 12),
+                                  ),
+                                  onChanged: (value) =>
+                                      setState(() => _hasDoctor = value),
+                                ),
+                                if (_hasDoctor) ...[
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                    controller: _doctorCodeCtrl,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 6,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Enter Doctor Code',
+                                      counterText: '',
+                                      prefixIcon: Icon(Icons.verified_outlined),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                ],
+                                TextField(
+                                  controller: _emergencyNameCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Emergency Contact Name',
+                                    prefixIcon:
+                                        Icon(Icons.contact_phone_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _emergencyPhoneCtrl,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Emergency Contact Phone',
+                                    prefixIcon:
+                                        Icon(Icons.phone_in_talk_outlined),
+                                  ),
+                                ),
+                              ],
                               if (_signupRole == 'doctor') ...[
                                 const SizedBox(height: 18),
                                 TextField(
                                   controller: _specializationCtrl,
                                   decoration: const InputDecoration(
                                     labelText: 'Specialization',
-                                    prefixIcon: Icon(Icons.medical_services_outlined),
+                                    prefixIcon:
+                                        Icon(Icons.medical_services_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _licenseCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Medical License Number',
+                                    prefixIcon: Icon(Icons.badge_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _licensingBodyCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Licensing Authority',
+                                    prefixIcon:
+                                        Icon(Icons.verified_user_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _clinicCtrl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Clinic or Hospital Name',
+                                    prefixIcon:
+                                        Icon(Icons.local_hospital_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _experienceCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Years of Experience',
+                                    prefixIcon: Icon(Icons.timeline_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _professionalAddressCtrl,
+                                  maxLines: 2,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Professional Address',
+                                    prefixIcon:
+                                        Icon(Icons.location_on_outlined),
+                                    alignLabelWithHint: true,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Doctor accounts remain pending until an admin reviews the license details.',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppTheme.warning,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                TextField(
+                                  controller: _bioCtrl,
+                                  maxLines: 3,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Professional Bio',
+                                    prefixIcon:
+                                        Icon(Icons.description_outlined),
+                                    alignLabelWithHint: true,
                                   ),
                                 ),
                               ],
@@ -415,6 +715,81 @@ class _TabButton extends StatelessWidget {
                     ? AppTheme.primary
                     : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
               )),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleChoiceCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _RoleChoiceCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        constraints: const BoxConstraints(minHeight: 108),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.primary.withOpacity(0.12)
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppTheme.primary : theme.dividerColor,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: selected ? AppTheme.primary : null),
+                const Spacer(),
+                Icon(
+                  selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                  color: selected ? AppTheme.primary : theme.disabledColor,
+                  size: 20,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: GoogleFonts.dmSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: theme.textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                color: theme.textTheme.bodySmall?.color,
+              ),
+            ),
+          ],
         ),
       ),
     );

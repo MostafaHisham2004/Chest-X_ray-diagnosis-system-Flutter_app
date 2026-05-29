@@ -19,10 +19,12 @@ class PatientUploadScreen extends StatefulWidget {
 }
 
 class _PatientUploadScreenState extends State<PatientUploadScreen> {
+  static const int _maxUploadBytes = 10 * 1024 * 1024;
   final _service = XrayService();
   final _picker = ImagePicker();
   File? _selectedFile;
   String? _fileName;
+  int? _fileSizeBytes;
   bool _isSubmitting = false;
 
   Future<void> _pickFile() async {
@@ -32,9 +34,23 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
       maxHeight: 2048,
     );
     if (picked == null) return;
+    final file = File(picked.path);
+    final size = await file.length();
+    if (size > _maxUploadBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Image is ${_formatBytes(size)}. Maximum upload size is 10 MB.'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
     setState(() {
-      _selectedFile = File(picked.path);
+      _selectedFile = file;
       _fileName = picked.name;
+      _fileSizeBytes = size;
     });
   }
 
@@ -55,10 +71,12 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
         _isSubmitting = false;
         _selectedFile = null;
         _fileName = null;
+        _fileSizeBytes = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('X-ray uploaded successfully! AI analysis will begin shortly.',
+          content: Text(
+              'X-ray uploaded successfully! AI analysis will begin shortly.',
               style: GoogleFonts.dmSans()),
           backgroundColor: AppTheme.primary,
           behavior: SnackBarBehavior.floating,
@@ -81,7 +99,8 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Upload failed. Check your connection.', style: GoogleFonts.dmSans()),
+          content: Text('Upload failed. Check your connection.',
+              style: GoogleFonts.dmSans()),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -114,8 +133,10 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
             // Upload card
             SectionCard(
               title: 'Upload Image',
-              description: 'Drag and drop or click to select your X-ray',
+              description: 'Select a clear X-ray image up to 10 MB',
+              padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_selectedFile == null)
                     UploadDropzone(onTap: _pickFile)
@@ -123,7 +144,8 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                     Column(
                       children: [
                         Container(
-                          height: 220,
+                          height: 320,
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             color: const Color(0xFF1A1A2E),
                             borderRadius: BorderRadius.circular(12),
@@ -133,6 +155,20 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                             children: [
                               const Icon(Icons.image,
                                   size: 64, color: Colors.white30),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  _selectedFile!,
+                                  width: double.infinity,
+                                  height: 320,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.image,
+                                    size: 64,
+                                    color: Colors.white30,
+                                  ),
+                                ),
+                              ),
                               Positioned(
                                   top: 12,
                                   right: 12,
@@ -143,11 +179,11 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                           ),
                         ),
                         TextButton.icon(
-                          onPressed: () =>
-                              setState(() {
-                                _selectedFile = null;
-                                _fileName = null;
-                              }),
+                          onPressed: () => setState(() {
+                            _selectedFile = null;
+                            _fileName = null;
+                            _fileSizeBytes = null;
+                          }),
                           icon: const Icon(Icons.close, size: 14),
                           label: const Text('Remove file'),
                         ),
@@ -175,6 +211,18 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                         fontSize: 15, fontWeight: FontWeight.w600)),
               ),
             ),
+            if (_selectedFile != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Selected file: ${_fileName ?? 'X-ray'} (${_formatBytes(_fileSizeBytes ?? 0)})',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : AppTheme.textSecondary,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             // What happens next
             SectionCard(
@@ -233,6 +281,9 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
                       'Ensure the X-ray image is clear and properly oriented.'),
                   const SizedBox(height: 8),
                   _GuidelineRow(
+                      'Accepted formats: JPG, PNG, JPEG, or DICOM up to 10 MB.'),
+                  const SizedBox(height: 8),
+                  _GuidelineRow(
                       'Include all relevant symptoms and medical history.'),
                   const SizedBox(height: 8),
                   _GuidelineRow(
@@ -245,6 +296,13 @@ class _PatientUploadScreenState extends State<PatientUploadScreen> {
         ),
       ),
     );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 KB';
+    final mb = bytes / (1024 * 1024);
+    if (mb >= 1) return '${mb.toStringAsFixed(1)} MB';
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
   }
 }
 

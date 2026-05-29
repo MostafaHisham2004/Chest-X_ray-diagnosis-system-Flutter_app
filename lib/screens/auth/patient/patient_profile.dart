@@ -36,6 +36,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
   Future<void> _loadStats() async {
     final token = context.read<AuthProvider>().token;
+    final auth = context.read<AuthProvider>();
+    if (auth.isAdmin) {
+      setState(() => _isLoading = false);
+      return;
+    }
     if (token == null) return;
     setState(() {
       _isLoading = true;
@@ -68,12 +73,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final auth = context.watch<AuthProvider>();
     final profileUser = auth.user;
+    final isAdminProfile = auth.isAdmin;
     final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
     final txtBody = theme.textTheme.bodyLarge?.color;
     final displayName = profileUser?.name ?? '';
     final displayEmail = profileUser?.email ?? '';
     final initials = profileUser?.initials ?? '?';
     final gender = profileUser?.gender;
+    final phone = profileUser?.phone;
     final dob = profileUser?.dob;
     final medicalHistory = profileUser?.medicalHistory;
     final xrayCount = (_stats['xrayCount'] as num?)?.toInt() ?? 0;
@@ -82,9 +89,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         : null;
 
     final missingFields = <String>[];
-    if (displayName.isEmpty) missingFields.add('Full Name');
-    if (gender == null || gender.isEmpty || gender == 'other') missingFields.add('Gender');
-    if (dob == null || dob.isEmpty) missingFields.add('Date of Birth');
+    if (!isAdminProfile && displayName.isEmpty) missingFields.add('Full Name');
+    if (!isAdminProfile &&
+        (gender == null || gender.isEmpty || gender == 'other')) {
+      missingFields.add('Gender');
+    }
+    if (!isAdminProfile && (dob == null || dob.isEmpty)) {
+      missingFields.add('Date of Birth');
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -94,13 +106,18 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('My Profile', style: GoogleFonts.dmSans(
-                fontSize: 26, fontWeight: FontWeight.w800, color: theme.textTheme.headlineLarge?.color)),
+            Text('My Profile',
+                style: GoogleFonts.dmSans(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: theme.textTheme.headlineLarge?.color)),
             const SizedBox(height: 4),
-            Text('View and manage your personal information',
+            Text(
+                isAdminProfile
+                    ? 'View and manage your admin account'
+                    : 'View and manage your personal information',
                 style: GoogleFonts.dmSans(fontSize: 14, color: txtSec)),
             const SizedBox(height: 20),
-
             if (missingFields.isNotEmpty)
               Container(
                 width: double.infinity,
@@ -114,27 +131,31 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline, size: 20, color: AppTheme.warning),
+                    const Icon(Icons.info_outline,
+                        size: 20, color: AppTheme.warning),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Please complete your profile:',
-                              style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.warning)),
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.warning)),
                           const SizedBox(height: 4),
                           ...missingFields.map((f) => Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text('• $f',
-                                style: GoogleFonts.dmSans(fontSize: 12, color: AppTheme.warning)),
-                          )),
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text('• $f',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 12, color: AppTheme.warning)),
+                              )),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-
             if (_error != null)
               Container(
                 width: double.infinity,
@@ -145,9 +166,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.error.withOpacity(0.25)),
                 ),
-                child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
+                child: Text(_error!,
+                    style: GoogleFonts.dmSans(
+                        color: AppTheme.error, fontWeight: FontWeight.w600)),
               ),
-
             SectionCard(
               title: '',
               padding: const EdgeInsets.all(24),
@@ -155,8 +177,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: AppTheme.primary.withOpacity(0.15),
-                  child: Text(initials, style: GoogleFonts.dmSans(
-                      fontSize: 28, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+                  child: Text(initials,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary)),
                 ),
                 const SizedBox(height: 14),
                 UserNameWithBadge(
@@ -166,7 +191,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   nameStyle: GoogleFonts.dmSans(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: displayName.isNotEmpty ? txtBody : AppTheme.textSecondary,
+                    color: displayName.isNotEmpty
+                        ? txtBody
+                        : AppTheme.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -176,17 +203,22 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _Badge(label: 'Patient',
-                        bg: isDark ? theme.colorScheme.surfaceContainerHighest : AppTheme.badgeBlue,
-                        fg: isDark ? AppTheme.darkTextPrimary : AppTheme.badgeBlueFg),
+                    _Badge(
+                        label: isAdminProfile ? 'Admin' : 'Patient',
+                        bg: isDark
+                            ? theme.colorScheme.surfaceContainerHighest
+                            : AppTheme.badgeBlue,
+                        fg: isDark
+                            ? AppTheme.darkTextPrimary
+                            : AppTheme.badgeBlueFg),
                     const SizedBox(width: 8),
-                    AdminBadge(isAdmin: auth.isAdmin, isLoading: auth.isLoading),
+                    AdminBadge(
+                        isAdmin: auth.isAdmin, isLoading: auth.isLoading),
                   ],
                 ),
               ]),
             ),
             const SizedBox(height: 16),
-
             SectionCard(
               title: 'Personal Information',
               description: 'Your personal and medical details',
@@ -206,36 +238,51 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   value: displayEmail,
                 ),
                 const SizedBox(height: 8),
-                _InfoTile(
-                  icon: Icons.female_outlined,
-                  iconColor: Color(0xFFEF5350),
-                  label: 'Gender',
-                  value: (gender != null && gender != 'other') ? gender[0].toUpperCase() + gender.substring(1) : 'Not set',
-                  missing: gender == null || gender.isEmpty || gender == 'other',
-                ),
-                const SizedBox(height: 8),
-                _InfoTile(
-                  icon: Icons.cake_outlined,
-                  iconColor: AppTheme.warning,
-                  label: 'Date of Birth',
-                  value: dob ?? 'Not set',
-                  missing: dob == null || dob.isEmpty,
-                ),
-                if (medicalHistory != null && medicalHistory.isNotEmpty) ...[
+                if (!isAdminProfile) ...[
+                  _InfoTile(
+                    icon: Icons.phone_outlined,
+                    iconColor: AppTheme.primary,
+                    label: 'Phone',
+                    value:
+                        (phone != null && phone.isNotEmpty) ? phone : 'Not set',
+                    missing: phone == null || phone.isEmpty,
+                  ),
                   const SizedBox(height: 8),
                   _InfoTile(
-                    icon: Icons.assignment_outlined,
-                    iconColor: AppTheme.success,
-                    label: 'Medical History',
-                    value: medicalHistory,
+                    icon: Icons.female_outlined,
+                    iconColor: const Color(0xFFEF5350),
+                    label: 'Gender',
+                    value: (gender != null && gender != 'other')
+                        ? gender[0].toUpperCase() + gender.substring(1)
+                        : 'Not set',
+                    missing:
+                        gender == null || gender.isEmpty || gender == 'other',
                   ),
+                  const SizedBox(height: 8),
+                  _InfoTile(
+                    icon: Icons.cake_outlined,
+                    iconColor: AppTheme.warning,
+                    label: 'Date of Birth',
+                    value: dob ?? 'Not set',
+                    missing: dob == null || dob.isEmpty,
+                  ),
+                  if (medicalHistory != null && medicalHistory.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _InfoTile(
+                      icon: Icons.assignment_outlined,
+                      iconColor: AppTheme.success,
+                      label: 'Medical History',
+                      value: medicalHistory,
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 44,
                   child: OutlinedButton.icon(
-                    onPressed: () => _openEditProfile(context, profileUser, auth),
+                    onPressed: () =>
+                        _openEditProfile(context, profileUser, auth),
                     icon: const Icon(Icons.edit_outlined, size: 16),
                     label: Text('Edit Profile',
                         style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
@@ -244,47 +291,41 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               ]),
             ),
             const SizedBox(height: 16),
-
-            SectionCard(
-              title: 'Medical Summary',
-              description: 'Overview of your medical data',
-              padding: EdgeInsets.zero,
-              child: _isLoading
-                  ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
-                  : Column(children: [
-                      _StatRow(label: 'Total X-rays', value: '$xrayCount'),
-                      Divider(height: 1, color: theme.dividerTheme.color),
-                      _StatRow(label: 'Latest Upload', value: latestDate != null ? _formatDate(latestDate) : 'None'),
-                      Divider(height: 1, color: theme.dividerTheme.color),
-                      _StatRow(label: 'Reports', value: '${_stats['reportCount'] ?? 0}'),
-                    ]),
-            ),
-            const SizedBox(height: 16),
-
-            SectionCard(
-              title: 'Account',
-              description: 'Manage your account settings',
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _requestDoctorDialog(context),
-                  icon: const Icon(Icons.medical_services_outlined, size: 18),
-                  label: Text('Request to Become a Doctor',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-                ),
+            if (!isAdminProfile) ...[
+              SectionCard(
+                title: 'Medical Summary',
+                description: 'Overview of your medical data',
+                padding: EdgeInsets.zero,
+                child: _isLoading
+                    ? const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator()))
+                    : Column(children: [
+                        _StatRow(label: 'Total X-rays', value: '$xrayCount'),
+                        Divider(height: 1, color: theme.dividerTheme.color),
+                        _StatRow(
+                            label: 'Latest Upload',
+                            value: latestDate != null
+                                ? _formatDate(latestDate)
+                                : 'None'),
+                        Divider(height: 1, color: theme.dividerTheme.color),
+                        _StatRow(
+                            label: 'Reports',
+                            value: '${_stats['reportCount'] ?? 0}'),
+                      ]),
               ),
-            ),
-            const SizedBox(height: 16),
-
+              const SizedBox(height: 16),
+            ],
             SectionCard(
               title: 'Appearance',
               description: 'Choose your preferred theme',
               child: const ThemeSwitcher(),
             ),
             const SizedBox(height: 24),
-
             SizedBox(
-              width: double.infinity, height: 50,
+              width: double.infinity,
+              height: 50,
               child: OutlinedButton.icon(
                 onPressed: () {
                   context.read<AuthProvider>().logout();
@@ -294,9 +335,13 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   );
                 },
                 icon: const Icon(Icons.logout, size: 18, color: Colors.red),
-                label: Text('Sign Out', style: GoogleFonts.dmSans(
-                    color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+                label: Text('Sign Out',
+                    style: GoogleFonts.dmSans(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15)),
+                style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red)),
               ),
             ),
             const SizedBox(height: 32),
@@ -306,47 +351,34 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
-  Future<void> _requestDoctorDialog(BuildContext context) async {
+  Future<void> _openEditProfile(
+      BuildContext context, AppUser? profileUser, AuthProvider auth) async {
     final messenger = ScaffoldMessenger.of(context);
-    final auth = context.read<AuthProvider>();
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (_) => const _RequestDoctorDialog(),
+      builder: (_) =>
+          _EditProfileDialog(user: profileUser, isAdmin: auth.isAdmin),
     );
     if (result == null) return;
-    final ok = await auth.requestDoctor(
-      name: result['name'] ?? '',
-      specialization: result['specialization'] ?? '',
-    );
-    if (!mounted) return;
-    if (ok) {
+    if ((result['email'] ?? '').trim().isEmpty) {
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Doctor request submitted! Pending admin approval.', style: GoogleFonts.dmSans()),
-          backgroundColor: AppTheme.success,
-          behavior: SnackBarBehavior.floating,
-        ),
+        const SnackBar(content: Text('Email is required.')),
       );
-    } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage ?? 'Failed to submit request', style: GoogleFonts.dmSans()),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      return;
     }
-  }
-
-  Future<void> _openEditProfile(BuildContext context, AppUser? profileUser, AuthProvider auth) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (_) => _EditProfileDialog(user: profileUser),
-    );
-    if (result == null) return;
+    final newPassword = result['password']?.trim() ?? '';
+    if (newPassword.isNotEmpty && newPassword.length < 8) {
+      messenger.showSnackBar(
+        const SnackBar(
+            content: Text('Password must be at least 8 characters.')),
+      );
+      return;
+    }
     final ok = await auth.updateProfile(
       name: result['name'],
+      phone: result['phone'],
+      email: result['email'],
+      password: newPassword,
       gender: result['gender'],
       dob: result['dob'],
       medicalHistory: result['medicalHistory'],
@@ -363,7 +395,8 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(auth.errorMessage ?? 'Failed to update profile', style: GoogleFonts.dmSans()),
+          content: Text(auth.errorMessage ?? 'Failed to update profile',
+              style: GoogleFonts.dmSans()),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -400,36 +433,46 @@ class _InfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-          color: missing
-              ? AppTheme.warning.withOpacity(0.08)
-              : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          border: missing ? Border.all(color: AppTheme.warning.withOpacity(0.25)) : null,
+        color: missing
+            ? AppTheme.warning.withOpacity(0.08)
+            : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: missing
+            ? Border.all(color: AppTheme.warning.withOpacity(0.25))
+            : null,
       ),
       child: Row(children: [
         Container(
-          width: 42, height: 42,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, size: 20, color: iconColor),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
-            )),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label,
+                style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.textSecondary)),
             const SizedBox(height: 2),
-            Text(value, style: GoogleFonts.dmSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: missing ? AppTheme.warning : theme.textTheme.bodyLarge?.color
-            )),
+            Text(value,
+                style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: missing
+                        ? AppTheme.warning
+                        : theme.textTheme.bodyLarge?.color)),
           ]),
         ),
         if (missing)
-          const Icon(Icons.warning_amber_rounded, size: 18, color: AppTheme.warning),
+          const Icon(Icons.warning_amber_rounded,
+              size: 18, color: AppTheme.warning),
       ]),
     );
   }
@@ -445,12 +488,17 @@ class _StatRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: GoogleFonts.dmSans(
-            fontSize: 14,
-            color: theme.brightness == Brightness.dark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
-        )),
-        Text(value, style: GoogleFonts.dmSans(
-            fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+        Text(label,
+            style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: theme.brightness == Brightness.dark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.textSecondary)),
+        Text(value,
+            style: GoogleFonts.dmSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.primary)),
       ]),
     );
   }
@@ -458,8 +506,9 @@ class _StatRow extends StatelessWidget {
 
 class _EditProfileDialog extends StatefulWidget {
   final AppUser? user;
+  final bool isAdmin;
 
-  const _EditProfileDialog({this.user});
+  const _EditProfileDialog({this.user, required this.isAdmin});
 
   @override
   State<_EditProfileDialog> createState() => _EditProfileDialogState();
@@ -468,6 +517,11 @@ class _EditProfileDialog extends StatefulWidget {
 class _EditProfileDialogState extends State<_EditProfileDialog> {
   late final TextEditingController _nameCtrl =
       TextEditingController(text: widget.user?.name ?? '');
+  late final TextEditingController _emailCtrl =
+      TextEditingController(text: widget.user?.email ?? '');
+  late final TextEditingController _phoneCtrl =
+      TextEditingController(text: widget.user?.phone ?? '');
+  final _passwordCtrl = TextEditingController();
   late final TextEditingController _medicalHistoryCtrl =
       TextEditingController(text: widget.user?.medicalHistory ?? '');
   late String _gender = widget.user?.gender ?? 'other';
@@ -477,6 +531,9 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    _passwordCtrl.dispose();
     _dobCtrl.dispose();
     _medicalHistoryCtrl.dispose();
     super.dispose();
@@ -528,48 +585,79 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 ],
               ),
               const SizedBox(height: 16),
+              if (!widget.isAdmin) ...[
+                TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Full name',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone number',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
-                controller: _nameCtrl,
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  labelText: 'Full name',
-                  prefixIcon: Icon(Icons.person_outline),
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _gender,
+              TextField(
+                controller: _passwordCtrl,
+                obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Gender',
-                  prefixIcon: Icon(Icons.female_outlined),
+                  labelText: 'New password',
+                  prefixIcon: Icon(Icons.lock_outline),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'male', child: Text('Male')),
-                  DropdownMenuItem(value: 'female', child: Text('Female')),
-                  DropdownMenuItem(value: 'other', child: Text('Other')),
-                ],
-                onChanged: (v) => setState(() => _gender = v ?? 'other'),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _dobCtrl,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Date of birth',
-                  prefixIcon: Icon(Icons.cake_outlined),
-                  suffixIcon: Icon(Icons.calendar_today, size: 18),
+              if (!widget.isAdmin) ...[
+                DropdownButtonFormField<String>(
+                  value: _gender,
+                  decoration: const InputDecoration(
+                    labelText: 'Gender',
+                    prefixIcon: Icon(Icons.female_outlined),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'male', child: Text('Male')),
+                    DropdownMenuItem(value: 'female', child: Text('Female')),
+                    DropdownMenuItem(value: 'other', child: Text('Other')),
+                  ],
+                  onChanged: (v) => setState(() => _gender = v ?? 'other'),
                 ),
-                onTap: _pickDate,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _medicalHistoryCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Medical history',
-                  prefixIcon: Icon(Icons.assignment_outlined),
-                  alignLabelWithHint: true,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _dobCtrl,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Date of birth',
+                    prefixIcon: Icon(Icons.cake_outlined),
+                    suffixIcon: Icon(Icons.calendar_today, size: 18),
+                  ),
+                  onTap: _pickDate,
                 ),
-              ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _medicalHistoryCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Medical history',
+                    prefixIcon: Icon(Icons.assignment_outlined),
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -578,97 +666,15 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                   onPressed: () {
                     Navigator.pop(context, {
                       'name': _nameCtrl.text.trim(),
+                      'phone': _phoneCtrl.text.trim(),
+                      'email': _emailCtrl.text.trim(),
+                      'password': _passwordCtrl.text.trim(),
                       'gender': _gender,
                       'dob': _dobCtrl.text.trim(),
                       'medicalHistory': _medicalHistoryCtrl.text.trim(),
                     });
                   },
                   child: const Text('Save Changes'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RequestDoctorDialog extends StatefulWidget {
-  const _RequestDoctorDialog();
-
-  @override
-  State<_RequestDoctorDialog> createState() => _RequestDoctorDialogState();
-}
-
-class _RequestDoctorDialogState extends State<_RequestDoctorDialog> {
-  final _nameCtrl = TextEditingController();
-  final _specializationCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _specializationCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text('Request to Become a Doctor',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 20, fontWeight: FontWeight.w800)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text('Fill in your details to request admin approval.',
-                  style: GoogleFonts.dmSans(fontSize: 13, color: AppTheme.textSecondary)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Full name',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _specializationCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Specialization',
-                  prefixIcon: Icon(Icons.medical_services_outlined),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (_nameCtrl.text.trim().isEmpty || _specializationCtrl.text.trim().isEmpty) return;
-                    Navigator.pop(context, {
-                      'name': _nameCtrl.text.trim(),
-                      'specialization': _specializationCtrl.text.trim(),
-                    });
-                  },
-                  child: const Text('Submit Request'),
                 ),
               ),
             ],
@@ -686,9 +692,11 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-    child: Text(label, style: GoogleFonts.dmSans(
-        fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+        child: Text(label,
+            style: GoogleFonts.dmSans(
+                fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
+      );
 }

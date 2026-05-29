@@ -787,8 +787,9 @@ class UploadDropzone extends StatelessWidget {
       onTap: onTap,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final height = constraints.maxWidth > 600 ? 260.0 : 180.0;
+          final height = constraints.maxWidth > 600 ? 300.0 : 240.0;
           return Container(
+            width: double.infinity,
             height: height,
             decoration: BoxDecoration(
               color: AppTheme.primary.withOpacity(0.03),

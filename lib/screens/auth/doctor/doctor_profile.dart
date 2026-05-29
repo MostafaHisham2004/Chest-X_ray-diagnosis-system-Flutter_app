@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../models/app_user.dart';
 import '../../../theme/app_theme.dart';
@@ -86,13 +85,15 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('My Profile', style: GoogleFonts.dmSans(
-                fontSize: 26, fontWeight: FontWeight.w800, color: theme.textTheme.headlineLarge?.color)),
+            Text('My Profile',
+                style: GoogleFonts.dmSans(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: theme.textTheme.headlineLarge?.color)),
             const SizedBox(height: 4),
             Text('View and manage your professional information',
                 style: GoogleFonts.dmSans(fontSize: 14, color: txtSec)),
             const SizedBox(height: 20),
-
             if (_error != null)
               Container(
                 width: double.infinity,
@@ -103,9 +104,10 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.error.withOpacity(0.25)),
                 ),
-                child: Text(_error!, style: GoogleFonts.dmSans(color: AppTheme.error, fontWeight: FontWeight.w600)),
+                child: Text(_error!,
+                    style: GoogleFonts.dmSans(
+                        color: AppTheme.error, fontWeight: FontWeight.w600)),
               ),
-
             SectionCard(
               title: '',
               padding: const EdgeInsets.all(24),
@@ -113,16 +115,23 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: AppTheme.primary,
-                  child: Text(initials, style: GoogleFonts.dmSans(
-                      fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
+                  child: Text(initials,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white)),
                 ),
                 const SizedBox(height: 16),
                 UserNameWithBadge(
                   name: displayName.isNotEmpty ? displayName : 'Doctor',
                   isAdmin: auth.isAdmin,
                   isLoading: auth.isLoading,
-                  nameStyle: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w700,
-                      color: displayName.isNotEmpty ? txtBody : AppTheme.textSecondary),
+                  nameStyle: GoogleFonts.dmSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: displayName.isNotEmpty
+                          ? txtBody
+                          : AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 4),
                 Text(displayEmail.isNotEmpty ? displayEmail.toUpperCase() : '',
@@ -131,15 +140,19 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _DarkBadge(label: 'Doctor',
+                    _DarkBadge(
+                        label: 'Doctor',
                         bg: theme.colorScheme.surfaceContainerHighest,
                         fg: txtBody ?? Colors.white),
                     const SizedBox(width: 8),
-                    AdminBadge(isAdmin: auth.isAdmin, isLoading: auth.isLoading),
+                    AdminBadge(
+                        isAdmin: auth.isAdmin, isLoading: auth.isLoading),
                     if (verificationStatus != null) ...[
                       const SizedBox(width: 8),
                       _DarkBadge(
-                        label: verificationStatus == 'approved' ? 'Verified' : verificationStatus,
+                        label: verificationStatus == 'approved'
+                            ? 'Verified'
+                            : verificationStatus,
                         bg: verificationStatus == 'approved'
                             ? AppTheme.statGreenBg
                             : AppTheme.warning.withOpacity(0.15),
@@ -153,7 +166,6 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               ]),
             ),
             const SizedBox(height: 16),
-
             SectionCard(
               title: 'Professional Information',
               description: 'Your professional credentials and details',
@@ -177,7 +189,9 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   icon: Icons.medical_services_outlined,
                   iconColor: AppTheme.primary,
                   label: 'Specialty',
-                  value: (specialization != null && specialization.isNotEmpty) ? specialization : 'Not set',
+                  value: (specialization != null && specialization.isNotEmpty)
+                      ? specialization
+                      : 'Not set',
                   missing: specialization == null || specialization.isEmpty,
                 ),
                 if (displayName.isNotEmpty || specialization != null) ...[
@@ -187,7 +201,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   width: double.infinity,
                   height: 44,
                   child: OutlinedButton.icon(
-                    onPressed: () => _openEditProfile(context, profileUser, auth),
+                    onPressed: () =>
+                        _openEditProfile(context, profileUser, auth),
                     icon: const Icon(Icons.edit_outlined, size: 16),
                     label: Text('Edit Profile',
                         style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
@@ -196,49 +211,80 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               ]),
             ),
             const SizedBox(height: 16),
-
             SectionCard(
               title: 'Performance Overview',
               description: 'Your activity statistics',
               child: _isLoading
-                  ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+                  ? const Center(
+                      child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator()))
                   : Column(children: [
                       Row(children: [
-                        Expanded(child: _FigmaStatBlock(
-                            label: 'Total Analyses', value: '$totalAnalyses',
-                            bg: AppTheme.statBlueBg, valueFg: AppTheme.statBlueFg,
-                            labelFg: AppTheme.statBlueLabel)),
+                        Expanded(
+                            child: _FigmaStatBlock(
+                                label: 'Total Analyses',
+                                value: '$totalAnalyses',
+                                bg: AppTheme.statBlueBg,
+                                valueFg: AppTheme.statBlueFg,
+                                labelFg: AppTheme.statBlueLabel)),
                         const SizedBox(width: 12),
-                        Expanded(child: _FigmaStatBlock(
-                            label: 'Reports', value: '$totalReports',
-                            bg: AppTheme.statGreenBg, valueFg: AppTheme.statGreenFg,
-                            labelFg: AppTheme.statGreenLabel)),
+                        Expanded(
+                            child: _FigmaStatBlock(
+                                label: 'Reports',
+                                value: '$totalReports',
+                                bg: AppTheme.statGreenBg,
+                                valueFg: AppTheme.statGreenFg,
+                                labelFg: AppTheme.statGreenLabel)),
                       ]),
                       const SizedBox(height: 12),
                       Row(children: [
-                        Expanded(child: _FigmaStatBlock(
-                            label: 'Pending', value: '$pendingCount',
-                            bg: AppTheme.statPurpleBg, valueFg: AppTheme.statPurpleFg,
-                            labelFg: AppTheme.statPurpleLabel)),
+                        Expanded(
+                            child: _FigmaStatBlock(
+                                label: 'Pending',
+                                value: '$pendingCount',
+                                bg: AppTheme.statPurpleBg,
+                                valueFg: AppTheme.statPurpleFg,
+                                labelFg: AppTheme.statPurpleLabel)),
                         const SizedBox(width: 12),
-                        Expanded(child: _FigmaStatBlock(
-                            label: 'Accuracy', value: '95.2%',
-                            bg: AppTheme.statOrangeBg, valueFg: AppTheme.statOrangeFg,
-                            labelFg: AppTheme.statOrangeLabel)),
+                        Expanded(
+                            child: _FigmaStatBlock(
+                                label: 'Accuracy',
+                                value: '95.2%',
+                                bg: AppTheme.statOrangeBg,
+                                valueFg: AppTheme.statOrangeFg,
+                                labelFg: AppTheme.statOrangeLabel)),
                       ]),
                     ]),
             ),
             const SizedBox(height: 16),
-
             SectionCard(
               title: 'Appearance',
               description: 'Choose your preferred theme',
               child: const ThemeSwitcher(),
             ),
+            const SizedBox(height: 16),
+            SectionCard(
+              title: 'Account',
+              description: 'Delete your doctor account securely',
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _deleteAccountDialog(context),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: Text('Delete Account',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.error,
+                    side: const BorderSide(color: AppTheme.error),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
-
             SizedBox(
-              width: double.infinity, height: 50,
+              width: double.infinity,
+              height: 50,
               child: OutlinedButton.icon(
                 onPressed: () {
                   context.read<AuthProvider>().logout();
@@ -248,9 +294,13 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   );
                 },
                 icon: const Icon(Icons.logout, size: 18, color: Colors.red),
-                label: Text('Sign Out', style: GoogleFonts.dmSans(
-                    color: Colors.red, fontWeight: FontWeight.w600, fontSize: 15)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+                label: Text('Sign Out',
+                    style: GoogleFonts.dmSans(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15)),
+                style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red)),
               ),
             ),
             const SizedBox(height: 32),
@@ -260,7 +310,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
     );
   }
 
-  Future<void> _openEditProfile(BuildContext context, AppUser? profileUser, AuthProvider auth) async {
+  Future<void> _openEditProfile(
+      BuildContext context, AppUser? profileUser, AuthProvider auth) async {
     final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<Map<String, String>>(
       context: context,
@@ -269,6 +320,8 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
     if (result == null) return;
     final ok = await auth.updateProfile(
       name: result['name'],
+      email: result['email'],
+      password: result['password'],
       specialization: result['specialization'],
     );
     if (!mounted) return;
@@ -283,9 +336,36 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(auth.errorMessage ?? 'Failed to update profile', style: GoogleFonts.dmSans()),
+          content: Text(auth.errorMessage ?? 'Failed to update profile',
+              style: GoogleFonts.dmSans()),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteAccountDialog(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const _DeleteAccountDialog(),
+    );
+    if (password == null) return;
+    final ok = await auth.deleteAccount(password: password);
+    if (!mounted) return;
+    if (ok) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (_) => false,
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage ?? 'Could not delete account'),
+          backgroundColor: AppTheme.error,
         ),
       );
     }
@@ -314,36 +394,46 @@ class _InfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-          color: missing
-              ? AppTheme.warning.withOpacity(0.08)
-              : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          border: missing ? Border.all(color: AppTheme.warning.withOpacity(0.25)) : null,
+        color: missing
+            ? AppTheme.warning.withOpacity(0.08)
+            : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: missing
+            ? Border.all(color: AppTheme.warning.withOpacity(0.25))
+            : null,
       ),
       child: Row(children: [
         Container(
-          width: 42, height: 42,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, size: 20, color: iconColor),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary
-            )),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label,
+                style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppTheme.darkTextSecondary
+                        : AppTheme.textSecondary)),
             const SizedBox(height: 2),
-            Text(value, style: GoogleFonts.dmSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: missing ? AppTheme.warning : theme.textTheme.bodyLarge?.color
-            )),
+            Text(value,
+                style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: missing
+                        ? AppTheme.warning
+                        : theme.textTheme.bodyLarge?.color)),
           ]),
         ),
         if (missing)
-          const Icon(Icons.warning_amber_rounded, size: 18, color: AppTheme.warning),
+          const Icon(Icons.warning_amber_rounded,
+              size: 18, color: AppTheme.warning),
       ]),
     );
   }
@@ -353,20 +443,26 @@ class _FigmaStatBlock extends StatelessWidget {
   final String label, value;
   final Color bg, valueFg, labelFg;
 
-  const _FigmaStatBlock({required this.label, required this.value,
-    required this.bg, required this.valueFg, required this.labelFg});
+  const _FigmaStatBlock(
+      {required this.label,
+      required this.value,
+      required this.bg,
+      required this.valueFg,
+      required this.labelFg});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: GoogleFonts.dmSans(fontSize: 14, color: labelFg)),
-      const SizedBox(height: 6),
-      Text(value, style: GoogleFonts.dmSans(
-          fontSize: 24, fontWeight: FontWeight.w800, color: valueFg)),
-    ]),
-  );
+        padding: const EdgeInsets.all(16),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: GoogleFonts.dmSans(fontSize: 14, color: labelFg)),
+          const SizedBox(height: 6),
+          Text(value,
+              style: GoogleFonts.dmSans(
+                  fontSize: 24, fontWeight: FontWeight.w800, color: valueFg)),
+        ]),
+      );
 }
 
 class _DarkBadge extends StatelessWidget {
@@ -376,11 +472,13 @@ class _DarkBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-    child: Text(label, style: GoogleFonts.dmSans(
-        fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+        child: Text(label,
+            style: GoogleFonts.dmSans(
+                fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+      );
 }
 
 class _EditDoctorProfileDialog extends StatefulWidget {
@@ -389,18 +487,24 @@ class _EditDoctorProfileDialog extends StatefulWidget {
   const _EditDoctorProfileDialog({this.user});
 
   @override
-  State<_EditDoctorProfileDialog> createState() => _EditDoctorProfileDialogState();
+  State<_EditDoctorProfileDialog> createState() =>
+      _EditDoctorProfileDialogState();
 }
 
 class _EditDoctorProfileDialogState extends State<_EditDoctorProfileDialog> {
   late final TextEditingController _nameCtrl =
       TextEditingController(text: widget.user?.name ?? '');
+  late final TextEditingController _emailCtrl =
+      TextEditingController(text: widget.user?.email ?? '');
+  final _passwordCtrl = TextEditingController();
   late final TextEditingController _specializationCtrl =
       TextEditingController(text: widget.user?.specialization ?? '');
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     _specializationCtrl.dispose();
     super.dispose();
   }
@@ -440,6 +544,24 @@ class _EditDoctorProfileDialogState extends State<_EditDoctorProfileDialog> {
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'New password',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: _specializationCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Specialization',
@@ -454,6 +576,8 @@ class _EditDoctorProfileDialogState extends State<_EditDoctorProfileDialog> {
                   onPressed: () {
                     Navigator.pop(context, {
                       'name': _nameCtrl.text.trim(),
+                      'email': _emailCtrl.text.trim(),
+                      'password': _passwordCtrl.text.trim(),
                       'specialization': _specializationCtrl.text.trim(),
                     });
                   },
@@ -464,6 +588,63 @@ class _EditDoctorProfileDialogState extends State<_EditDoctorProfileDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Delete account'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+              'This removes your account and professional profile. Confirm with your password to continue.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordCtrl,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final password = _passwordCtrl.text;
+            if (password.isNotEmpty) {
+              Navigator.pop(context, password);
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+          child: const Text('Delete Account'),
+        ),
+      ],
     );
   }
 }

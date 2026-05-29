@@ -5,6 +5,7 @@ class AppUser {
   final String email;
   final bool isAdmin;
   final String role;
+  final String? phone;
   final String? gender;
   final String? dob;
   final String? medicalHistory;
@@ -20,6 +21,7 @@ class AppUser {
     required this.email,
     required this.isAdmin,
     required this.role,
+    this.phone,
     this.gender,
     this.dob,
     this.medicalHistory,
@@ -52,8 +54,11 @@ class AppUser {
       profileId: readNullableInt('profile_id'),
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
-      isAdmin: json['isAdmin'] == true || json['is_admin'] == true,
+      isAdmin: json['isAdmin'] == true ||
+          json['is_admin'] == true ||
+          json['role'] == 'admin',
       role: json['role'] as String? ?? 'patient',
+      phone: json['phone'] as String?,
       gender: json['gender'] as String?,
       dob: json['dob'] as String?,
       medicalHistory: json['medical_history'] as String?,

@@ -19,8 +19,10 @@ class AuthProvider extends ChangeNotifier {
   String? errorMessage;
 
   bool get isLoading => status == AuthStatus.loading;
-  bool get isAuthenticated => status == AuthStatus.authenticated && user != null;
-  bool get isAdmin => user?.isAdmin ?? false;
+  bool get isAuthenticated =>
+      status == AuthStatus.authenticated && user != null;
+  bool get isAdmin =>
+      role == 'admin' || user?.role == 'admin' || (user?.isAdmin ?? false);
 
   Future<bool> login({
     required String email,
@@ -33,19 +35,25 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String email,
     required String password,
+    required String phone,
     String gender = 'other',
     String? dob,
     String role = 'patient',
+    String? medicalHistory,
     String? specialization,
+    String? medicalCertificate,
   }) async {
     return _run(() => _authService.signup(
           name: name,
           email: email,
           password: password,
+          phone: phone,
           gender: gender,
           dob: dob ?? DateTime.now().toIso8601String().split('T').first,
+          medicalHistory: medicalHistory,
           role: role,
           specialization: specialization,
+          medicalCertificate: medicalCertificate,
         ));
   }
 
@@ -55,7 +63,8 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     if (token == null) return false;
     try {
-      await _authService.requestDoctor(token: token!, name: name, specialization: specialization);
+      await _authService.requestDoctor(
+          token: token!, name: name, specialization: specialization);
       await refreshProfile();
       return true;
     } on ApiException catch (e) {
@@ -67,6 +76,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> updateProfile({
     String? name,
+    String? phone,
+    String? email,
+    String? password,
     String? gender,
     String? dob,
     String? medicalHistory,
@@ -77,6 +89,9 @@ class AuthProvider extends ChangeNotifier {
       final updated = await _authService.updateProfile(
         token: token!,
         name: name,
+        phone: phone,
+        email: email,
+        password: password,
         gender: gender,
         dob: dob,
         medicalHistory: medicalHistory,
@@ -103,6 +118,19 @@ class AuthProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       errorMessage = e.message;
       notifyListeners();
+    }
+  }
+
+  Future<bool> deleteAccount({required String password}) async {
+    if (token == null) return false;
+    try {
+      await _authService.deleteAccount(token: token!, password: password);
+      logout();
+      return true;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+      notifyListeners();
+      return false;
     }
   }
 

@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'screens/auth/admin/admin_main.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/auth/doctor/doctor_profile.dart';
+import 'screens/shared/otp_verification_screen.dart';
 import 'screens/auth/patient/patient_profile.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
@@ -53,6 +54,7 @@ class MediScanApp extends StatelessWidget {
         '/admin': (_) => const AdminMainScreen(),
         '/doctor/profile': (_) => const DoctorProfileScreen(),
         '/patient/profile': (_) => const PatientProfileScreen(),
+        '/otp': (_) => const OtpVerificationScreen(),
       },
     );
   }

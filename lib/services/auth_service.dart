@@ -33,31 +33,43 @@ class AuthService {
     required String name,
     required String email,
     required String password,
+    required String phone,
     required String gender,
     required String dob,
     String? medicalHistory,
     String role = 'patient',
     String? specialization,
+    String? medicalCertificate,
   }) async {
     final body = <String, dynamic>{
       'name': name,
       'email': email,
       'password': password,
+      'phone': phone,
       'gender': gender,
       'dob': dob,
       'role': role,
       if (medicalHistory != null) 'medical_history': medicalHistory,
       if (specialization != null) 'specialization': specialization,
+      if (medicalCertificate != null) 'medical_certificate': medicalCertificate,
     };
     final result = await _api.post('/auth/signup', body: body);
     return _sessionFromBody(result);
+  }
+
+  Future<void> deleteAccount({
+    required String token,
+    required String password,
+  }) async {
+    await _api.delete('/auth/me', token: token, body: {'password': password});
   }
 
   Future<AppUser> fetchMe(String token) async {
     final body = await _api.get('/auth/me', token: token);
     final data = body['data'] as Map<String, dynamic>? ?? {};
     final userJson = data['user'] as Map<String, dynamic>? ?? {};
-    final role = data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
+    final role =
+        data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
     return AppUser.fromJson({...userJson, 'role': role});
   }
 
@@ -75,6 +87,9 @@ class AuthService {
   Future<AppUser> updateProfile({
     required String token,
     String? name,
+    String? phone,
+    String? email,
+    String? password,
     String? gender,
     String? dob,
     String? medicalHistory,
@@ -82,6 +97,9 @@ class AuthService {
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
+    if (phone != null) body['phone'] = phone;
+    if (email != null) body['email'] = email;
+    if (password != null && password.isNotEmpty) body['password'] = password;
     if (gender != null) body['gender'] = gender;
     if (dob != null) body['dob'] = dob;
     if (medicalHistory != null) body['medical_history'] = medicalHistory;
@@ -89,7 +107,8 @@ class AuthService {
     final response = await _api.patch('/auth/me', body: body, token: token);
     final data = response['data'] as Map<String, dynamic>? ?? {};
     final userJson = data['user'] as Map<String, dynamic>? ?? {};
-    final role = data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
+    final role =
+        data['role'] as String? ?? userJson['role'] as String? ?? 'patient';
     return AppUser.fromJson({...userJson, 'role': role});
   }
 

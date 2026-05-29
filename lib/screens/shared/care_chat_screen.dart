@@ -22,6 +22,7 @@ class CareChatScreen extends StatefulWidget {
 class _CareChatScreenState extends State<CareChatScreen> {
   final _service = ChatService();
   final _messageCtrl = TextEditingController();
+  final _doctorCodeCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   StreamSubscription<ChatMessage>? _messageSubscription;
 
@@ -31,6 +32,7 @@ class _CareChatScreenState extends State<CareChatScreen> {
   ChatThread? _selectedThread;
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isConnecting = false;
   String? _error;
 
   @override
@@ -43,6 +45,7 @@ class _CareChatScreenState extends State<CareChatScreen> {
   void dispose() {
     _messageSubscription?.cancel();
     _messageCtrl.dispose();
+    _doctorCodeCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -168,6 +171,29 @@ class _CareChatScreenState extends State<CareChatScreen> {
       _showSnack('Message could not be sent.');
     } finally {
       if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  Future<void> _connectDoctor() async {
+    final token = context.read<AuthProvider>().token;
+    final code = _doctorCodeCtrl.text.trim();
+    if (token == null || code.length != 6 || _isConnecting) {
+      _showSnack('Enter the 6 digit doctor code.');
+      return;
+    }
+
+    setState(() => _isConnecting = true);
+    try {
+      await _service.verifyConnection(token: token, code: code);
+      _doctorCodeCtrl.clear();
+      _showSnack('Doctor connected successfully.');
+      await _loadChat();
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (_) {
+      _showSnack('Could not connect to doctor.');
+    } finally {
+      if (mounted) setState(() => _isConnecting = false);
     }
   }
 
@@ -320,6 +346,13 @@ class _CareChatScreenState extends State<CareChatScreen> {
     final auth = context.watch<AuthProvider>();
     final thread = _selectedThread;
     if (thread == null) {
+      if (role == 'patient') {
+        return _PatientConnectCard(
+          controller: _doctorCodeCtrl,
+          isConnecting: _isConnecting,
+          onConnect: _connectDoctor,
+        );
+      }
       return _EmptyConversation(
         icon: Icons.forum_outlined,
         title: 'Select a conversation',
@@ -411,6 +444,101 @@ class _CareChatScreenState extends State<CareChatScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PatientConnectCard extends StatelessWidget {
+  final TextEditingController controller;
+  final bool isConnecting;
+  final VoidCallback onConnect;
+
+  const _PatientConnectCard({
+    required this.controller,
+    required this.isConnecting,
+    required this.onConnect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final txtSec = isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 440),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorderColor : AppTheme.borderColor,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.medical_information_outlined,
+                  size: 42, color: AppTheme.primary),
+              const SizedBox(height: 14),
+              Text(
+                'Connect with your doctor to start chatting.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: theme.textTheme.titleLarge?.color,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Enter the SMS code sent by your doctor.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(fontSize: 13, color: txtSec),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Doctor Code',
+                  counterText: '',
+                  prefixIcon: Icon(Icons.password_outlined),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: isConnecting ? null : onConnect,
+                  icon: isConnecting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.link_outlined),
+                  label: Text(isConnecting ? 'Connecting...' : 'Connect'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

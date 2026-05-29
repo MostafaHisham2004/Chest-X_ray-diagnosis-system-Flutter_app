@@ -135,6 +135,24 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     }
   }
 
+  Future<void> _setDoctorVerification(ManagedUser user, String status) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _service.updateUser(
+        token: token,
+        id: user.id,
+        payload: {'verification_status': status},
+      );
+      await _load();
+      _showSnack('Doctor ${status == 'approved' ? 'approved' : 'rejected'}.');
+    } on ApiException catch (e) {
+      _showSnack(e.message);
+    } catch (_) {
+      _showSnack('Could not update doctor verification.');
+    }
+  }
+
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -151,13 +169,13 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     if (!auth.isAdmin) {
       return Scaffold(
         appBar: const SessionAppTopBar(hideProfileMenu: true),
-      body: Center(
-        child: Text(
-          'Admin access required',
-          style:
-              GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700),
+        body: Center(
+          child: Text(
+            'Admin access required',
+            style:
+                GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
         ),
-      ),
       );
     }
 
@@ -199,11 +217,20 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         ),
                       ),
                       SizedBox(
-                        height: 44,
+                        height: 56,
                         child: ElevatedButton.icon(
                           onPressed: () => _openUserSheet(),
-                          icon: const Icon(Icons.person_add_alt_1, size: 18),
-                          label: const Text('Add User'),
+                          icon: const Icon(Icons.person_add_alt_1, size: 22),
+                          label: Text(
+                            'Add User',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 22),
+                          ),
                         ),
                       ),
                     ],
@@ -241,6 +268,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                           onSearch: _load,
                           onEdit: _openUserSheet,
                           onDelete: _deleteUser,
+                          onVerify: _setDoctorVerification,
                         );
                         final activity = _ActivityPanel(activity: _activity);
                         if (!wide) {
@@ -329,6 +357,7 @@ class _UsersPanel extends StatelessWidget {
   final VoidCallback onSearch;
   final ValueChanged<ManagedUser> onEdit;
   final ValueChanged<ManagedUser> onDelete;
+  final void Function(ManagedUser user, String status) onVerify;
 
   const _UsersPanel({
     required this.users,
@@ -338,6 +367,7 @@ class _UsersPanel extends StatelessWidget {
     required this.onSearch,
     required this.onEdit,
     required this.onDelete,
+    required this.onVerify,
   });
 
   @override
@@ -404,6 +434,7 @@ class _UsersPanel extends StatelessWidget {
                     user: user,
                     onEdit: () => onEdit(user),
                     onDelete: () => onDelete(user),
+                    onVerify: (status) => onVerify(user, status),
                   ),
                   Divider(height: 1, color: theme.dividerTheme.color),
                 ],
@@ -419,11 +450,13 @@ class _UserRow extends StatelessWidget {
   final ManagedUser user;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final ValueChanged<String> onVerify;
 
   const _UserRow({
     required this.user,
     required this.onEdit,
     required this.onDelete,
+    required this.onVerify,
   });
 
   @override
@@ -483,6 +516,22 @@ class _UserRow extends StatelessWidget {
               label: user.verificationStatus ?? 'pending',
               type: diagnosisToType(user.verificationStatus ?? 'pending'),
             ),
+            if (user.verificationStatus != 'approved') ...[
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: 'Approve doctor',
+                icon: const Icon(Icons.verified_outlined,
+                    color: AppTheme.success),
+                onPressed: () => onVerify('approved'),
+              ),
+            ],
+            if (user.verificationStatus != 'rejected') ...[
+              IconButton(
+                tooltip: 'Reject doctor',
+                icon: const Icon(Icons.cancel_outlined, color: AppTheme.error),
+                onPressed: () => onVerify('rejected'),
+              ),
+            ],
           ],
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -785,8 +834,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                   value: _verification,
                   decoration: const InputDecoration(labelText: 'Verification'),
                   items: const [
-                    DropdownMenuItem(
-                        value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
                     DropdownMenuItem(
                         value: 'approved', child: Text('Approved')),
                     DropdownMenuItem(

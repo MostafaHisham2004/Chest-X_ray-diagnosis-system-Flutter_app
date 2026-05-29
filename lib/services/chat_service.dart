@@ -35,6 +35,50 @@ class ChatService {
         .toList();
   }
 
+  Future<void> sendConnectionRequest({
+    required String token,
+    required String phone,
+  }) async {
+    await _api.post(
+      '/api/chat/connections/request',
+      token: token,
+      body: {'phone': phone},
+    );
+  }
+
+  Future<void> verifyConnection({
+    required String token,
+    required String code,
+  }) async {
+    await _api.post(
+      '/api/chat/connections/verify',
+      token: token,
+      body: {'code': code},
+    );
+  }
+
+  Future<Map<String, dynamic>> sendOtp({
+    required String token,
+    required String phone,
+  }) async {
+    final body = await _api.post(
+      '/api/otp/send-otp',
+      token: token,
+      body: {'phone': phone},
+    );
+    return body;
+  }
+
+  Future<void> verifyOtp({
+    required String phone,
+    required String code,
+  }) async {
+    await _api.post(
+      '/api/otp/verify-otp',
+      body: {'phone': phone, 'code': code},
+    );
+  }
+
   Future<ChatThread> createThread({
     required String token,
     required int userId,
